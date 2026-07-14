@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import api from "../services/api";
 import { PostItem } from "../components/PostItem";
 import { useAuth } from "../context/AuthContext";
+import { Sparkles, Compass } from "lucide-react";
 import "./Home.css";
 
 export const Home = () => {
@@ -98,22 +99,6 @@ export const Home = () => {
 
   return (
     <div className="home-container">
-      {/* Left Sidebar */}
-      <aside className="home-sidebar left-sidebar">
-        <div className="sidebar-card">
-          <h3>Your Profile</h3>
-          <div className="profile-mini">
-            <div className="profile-avatar-mini">
-              {user?.username?.charAt(0).toUpperCase()}
-            </div>
-            <div className="profile-info-mini">
-              <p className="profile-name">{user?.username}</p>
-              <p className="profile-handle">@{user?.username}</p>
-            </div>
-          </div>
-        </div>
-      </aside>
-
       {/* Main Feed */}
       <main className="home-feed">
         {loading ? (
@@ -128,9 +113,12 @@ export const Home = () => {
           </div>
         ) : posts.length === 0 ? (
           <div className="empty-state">
-            <div className="empty-icon">✨</div>
+            <Sparkles size={48} className="text-purple-500 mb-4" />
             <h2>Welcome to PixLoop!</h2>
             <p>There are no posts yet. Be the first to share something amazing.</p>
+            <Link to="/create" className="btn-create-first">
+              Create a Post
+            </Link>
           </div>
         ) : (
           <div className="posts-feed">
@@ -146,52 +134,69 @@ export const Home = () => {
         )}
       </main>
 
-      {/* Right Sidebar */}
-      <aside className="home-sidebar right-sidebar">
-        <div className="sidebar-card">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-            <h4 style={{ margin: 0 }}>Active Groups</h4>
-            <Link 
-              to="/groups"
-              style={{ background: '#333', color: 'white', textDecoration: 'none', padding: '4px 8px', borderRadius: '4px', fontSize: '0.8rem' }}
-            >
+      {/* Right Sidebar - Suggestions */}
+      <aside className="home-sidebar-right">
+        <div className="sidebar-profile-card">
+          <Link to="/profile" className="profile-link-card">
+            {user?.profile_pic ? (
+              <img src={user.profile_pic} alt={user.username} className="sidebar-profile-avatar" />
+            ) : (
+              <div className="sidebar-profile-avatar-placeholder">
+                {user?.username?.charAt(0).toUpperCase()}
+              </div>
+            )}
+            <div className="sidebar-profile-meta">
+              <span className="sidebar-profile-username">{user?.username}</span>
+              <span className="sidebar-profile-email">{user?.email}</span>
+            </div>
+          </Link>
+        </div>
+
+        <div className="sidebar-groups-card">
+          <div className="sidebar-card-header">
+            <h3>Suggested Communities</h3>
+            <Link to="/groups" className="see-all-link">
               See All
             </Link>
           </div>
-          <div className="group-list">
+          
+          <div className="suggested-groups-list">
             {communities.length === 0 ? (
-              <p className="empty-text">{loading ? "Loading communities..." : "No active groups found."}</p>
+              <p className="empty-text">{loading ? "Loading..." : "No active groups found."}</p>
             ) : (
-              communities.map((community) => (
-                <Link to={`/groups/${community.id}`} key={community.id} className="group-item" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '0.5rem', textDecoration: 'none', color: 'inherit' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <div className="group-icon">
-                      {community.logo_url ? (
-                        <img src={community.logo_url} alt={community.name} style={{ width: '24px', height: '24px', borderRadius: '50%', objectFit: 'cover' }} />
-                      ) : (
-                        community.icon
-                      )}
+              communities.slice(0, 5).map((community) => (
+                <div key={community.id} className="suggested-group-item">
+                  <Link to={`/groups/${community.id}`} className="suggested-group-info">
+                    {community.logo_url ? (
+                      <img src={community.logo_url} alt={community.name} className="suggested-group-logo" />
+                    ) : (
+                      <div className="suggested-group-logo-placeholder">
+                        {community.icon || "🌟"}
+                      </div>
+                    )}
+                    <div className="suggested-group-meta">
+                      <p className="suggested-group-name">{community.name}</p>
+                      <span className="suggested-group-members">{community.memberCount} members</span>
                     </div>
-                    <div className="group-info">
-                      <p style={{ margin: 0, fontWeight: 'bold' }}>{community.name}</p>
-                      <span className="member-count" style={{ fontSize: '0.8rem', color: '#888' }}>{community.memberCount} members</span>
-                    </div>
-                  </div>
+                  </Link>
                   {!community.is_member && (
                     <button 
-                      onClick={(e) => { e.preventDefault(); handleJoinGroup(community.id); }}
-                      style={{ background: 'transparent', color: '#a855f7', border: '1px solid #a855f7', padding: '2px 8px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+                      onClick={() => handleJoinGroup(community.id)}
+                      className="btn-join-suggested"
                     >
                       Join
                     </button>
                   )}
-                </Link>
+                </div>
               ))
             )}
           </div>
         </div>
-      </aside>
 
+        <footer className="sidebar-footer-info">
+          <p>© 2026 PIXLOOP FROM ANTIGRAVITY</p>
+        </footer>
+      </aside>
     </div>
   );
 };

@@ -1,39 +1,39 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+/* Fonts are loaded via index.html link tags for speed and stability */
 
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 /* 🎨 DESIGN SYSTEM - CSS VARIABLES */
 /* ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━ */
 
 :root {
-  /* Colors - Primary */
-  --primary: #6366f1;
-  --primary-dark: #4f46e5;
-  --primary-light: #a5b4fc;
+  /* Colors - Primary (Clean White & Greys) */
+  --primary: #ffffff;
+  --primary-dark: #e4e4e7;
+  --primary-light: #f4f4f5;
   
-  /* Colors - Accent */
-  --accent: #ec4899;
-  --accent-dark: #db2777;
-  --accent-light: #f472b6;
+  /* Colors - Accent (Sleek Purple brand accent) */
+  --accent: #a855f7;
+  --accent-dark: #7c3aed;
+  --accent-light: #c084fc;
   
-  /* Colors - Background */
-  --bg-base: #0a0a0f;
-  --bg-card: #13131a;
-  --bg-elevated: #1c1c28;
-  --bg-hover: #22223a;
+  /* Colors - Background (Instagram Minimal Dark) */
+  --bg-base: #000000;
+  --bg-card: #09090b;
+  --bg-elevated: #121214;
+  --bg-hover: #1c1c1f;
   
   /* Colors - Borders */
-  --border: #2a2a3d;
-  --border-light: #3a3a55;
+  --border: #1a1a1e;
+  --border-light: #2d2d34;
   
   /* Colors - Text */
-  --text-primary: #f1f1f5;
-  --text-secondary: #9494b0;
-  --text-muted: #5a5a78;
+  --text-primary: #f4f4f5;
+  --text-secondary: #a1a1aa;
+  --text-muted: #52525b;
   
   /* Colors - Status */
   --success: #22c55e;
   --danger: #ef4444;
-  --warning: #f59e0b;
+  --warning: #eab308;
   --info: #3b82f6;
   
   /* Spacing */
@@ -64,19 +64,19 @@
   --radius-full: 9999px;
   
   /* Transitions */
-  --transition-fast: 0.15s ease;
-  --transition-base: 0.2s ease;
-  --transition-slow: 0.3s ease;
+  --transition-fast: 0.1s ease;
+  --transition-base: 0.15s ease;
+  --transition-slow: 0.25s ease;
   
   /* Shadows */
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.2);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.7);
   
   /* Gradients */
-  --gradient-primary: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
-  --gradient-primary-dark: linear-gradient(135deg, var(--primary-dark) 0%, var(--accent-dark) 100%);
+  --gradient-primary: linear-gradient(135deg, #a855f7 0%, #ec4899 100%);
+  --gradient-primary-dark: linear-gradient(135deg, #7c3aed 0%, #db2777 100%);
   
   /* Z-index */
   --z-dropdown: 100;

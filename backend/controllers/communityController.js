@@ -195,3 +195,54 @@ export const deleteCommunity = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 };
+
+// @desc    Update a community
+// @route   PUT /api/communities/:id
+// @access  Protected
+export const updateCommunity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description } = req.body;
+    const userId = req.user.id;
+
+    const [community] = await pool.query('SELECT * FROM communities WHERE id = ?', [id]);
+    
+    if (community.length === 0) {
+      return res.status(404).json({ success: false, message: 'Community not found' });
+    }
+
+    if (community[0].creator_id !== userId) {
+      return res.status(401).json({ success: false, message: 'User not authorized to edit this community' });
+    }
+
+    let logoUrl = community[0].logo_url;
+
+    if (req.file) {
+      const uploadResult = await uploadOnCloudinary(req.file.path);
+      if (uploadResult) {
+        logoUrl = uploadResult.secure_url;
+      }
+    }
+
+    await pool.query(
+      'UPDATE communities SET name = ?, description = ?, logo_url = ? WHERE id = ?',
+      [name || community[0].name, description || '', logoUrl, id]
+    );
+
+    const [updated] = await pool.query(
+      `SELECT c.*, 
+       COUNT(DISTINCT cm.user_id) as memberCount,
+       (SELECT COUNT(*) > 0 FROM community_members WHERE community_id = c.id AND user_id = ?) as is_member
+       FROM communities c
+       LEFT JOIN community_members cm ON c.id = cm.community_id
+       WHERE c.id = ?
+       GROUP BY c.id`,
+      [userId, id]
+    );
+
+    res.json({ success: true, data: { ...updated[0], is_member: !!updated[0].is_member } });
+  } catch (error) {
+    console.error('updateCommunity ERROR:', error.message);
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+};

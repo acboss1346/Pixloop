@@ -106,3 +106,117 @@ export const toggleNotifications = async (req, res) => {
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };
+
+// @desc    Update user profile details
+// @route   PUT /api/auth/profile
+// @access  Private
+export const updateProfile = async (req, res) => {
+  try {
+    const { username, email } = req.body;
+    const userId = req.user.id;
+
+    if (!username || !email) {
+      return res.status(400).json({ message: 'Username and email are required' });
+    }
+
+    const [existing] = await pool.query(
+      'SELECT * FROM users WHERE (username = ? OR email = ?) AND id != ?',
+      [username, email, userId]
+    );
+
+    if (existing.length > 0) {
+      return res.status(400).json({ message: 'Username or email already taken' });
+    }
+
+    await pool.query(
+      'UPDATE users SET username = ?, email = ? WHERE id = ?',
+      [username, email, userId]
+    );
+
+    const [updated] = await pool.query(
+      'SELECT id, username, email, profile_pic, notifications_enabled FROM users WHERE id = ?',
+      [userId]
+    );
+
+    res.json(updated[0]);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+import { uploadOnCloudinary } from '../utils/cloudinary.js';
+
+// @desc    Update user profile picture
+// @route   PUT /api/auth/profile-pic
+// @access  Private
+export const updateProfilePic = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    let profilePicUrl = null;
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'Please select an image file' });
+    }
+
+    const uploadResult = await uploadOnCloudinary(req.file.path);
+    if (uploadResult) {
+      profilePicUrl = uploadResult.secure_url;
+    } else {
+      return res.status(500).json({ message: 'Failed to upload image' });
+    }
+
+    await pool.query(
+      'UPDATE users SET profile_pic = ? WHERE id = ?',
+      [profilePicUrl, userId]
+    );
+
+    const [updated] = await pool.query(
+      'SELECT id, username, email, profile_pic, notifications_enabled FROM users WHERE id = ?',
+      [userId]
+    );
+
+    res.json(updated[0]);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+// @desc    Search users by username
+// @route   GET /api/auth/search-users
+// @access  Private
+export const searchUsers = async (req, res) => {
+  try {
+    const { query } = req.query;
+    if (!query) {
+      return res.json([]);
+    }
+    const [users] = await pool.query(
+      'SELECT id, username, profile_pic FROM users WHERE username LIKE ? LIMIT 10',
+      [`%${query}%`]
+    );
+    res.json(users);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+// @desc    Get user profile by username
+// @route   GET /api/auth/user/:username
+// @access  Private
+export const getUserProfile = async (req, res) => {
+  try {
+    const { username } = req.params;
+    const [users] = await pool.query(
+      'SELECT id, username, email, profile_pic FROM users WHERE username = ?',
+      [username]
+    );
+
+    if (users.length === 0) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    res.json(users[0]);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};

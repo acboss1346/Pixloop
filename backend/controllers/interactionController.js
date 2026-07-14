@@ -77,7 +77,7 @@ export const addComment = async (req, res) => {
       return res.status(400).json({ message: 'Comment text is required' });
     }
 
-    await pool.query(
+    const [result] = await pool.query(
       'INSERT INTO comments (post_id, user_id, comment) VALUES (?, ?, ?)',
       [postId, userId, comment]
     );
@@ -94,7 +94,8 @@ export const addComment = async (req, res) => {
       `SELECT c.*, u.username, u.profile_pic 
        FROM comments c 
        JOIN users u ON c.user_id = u.id 
-       WHERE c.id = LAST_INSERT_ID()`
+       WHERE c.id = ?`,
+      [result.insertId]
     );
 
     res.status(201).json(newComment[0]);

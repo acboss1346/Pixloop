@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import { useNavigate } from "react-router-dom";
 import { Bell } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import api from "../services/api";
@@ -8,6 +9,7 @@ export const NotificationsDropdown = () => {
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const dropdownRef = useRef(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchNotifications();
@@ -42,6 +44,11 @@ export const NotificationsDropdown = () => {
       } catch (err) {
         console.error("Failed to mark notification as read", err);
       }
+    }
+    
+    setIsOpen(false);
+    if (notification.post_id) {
+      navigate(`/post/${notification.post_id}`);
     }
   };
 

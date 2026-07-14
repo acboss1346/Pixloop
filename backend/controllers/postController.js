@@ -44,7 +44,7 @@ export const createPost = async (req, res) => {
 // @access  Private
 export const getPosts = async (req, res) => {
   try {
-    const { community_id } = req.query;
+    const { community_id, user_id } = req.query;
     
     let query = `SELECT p.*, u.username, u.profile_pic,
        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
@@ -56,10 +56,20 @@ export const getPosts = async (req, res) => {
        JOIN users u ON p.user_id = u.id `;
     
     const queryParams = [req.user.id, req.user.id];
+    const whereClauses = [];
 
     if (community_id) {
-      query += ` WHERE p.community_id = ? `;
+      whereClauses.push(`p.community_id = ?`);
       queryParams.push(community_id);
+    }
+
+    if (user_id) {
+      whereClauses.push(`p.user_id = ?`);
+      queryParams.push(user_id);
+    }
+
+    if (whereClauses.length > 0) {
+      query += ` WHERE ` + whereClauses.join(' AND ');
     }
 
     query += ` ORDER BY p.created_at DESC`;
@@ -131,6 +141,47 @@ export const deletePost = async (req, res) => {
     await pool.query('DELETE FROM posts WHERE id = ?', [req.params.id]);
 
     res.json({ message: 'Post removed' });
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+// @desc    Update post caption
+// @route   PUT /api/posts/:id
+// @access  Private
+export const updatePost = async (req, res) => {
+  try {
+    const { caption } = req.body;
+    const [posts] = await pool.query('SELECT * FROM posts WHERE id = ?', [req.params.id]);
+
+    if (posts.length === 0) {
+      return res.status(404).json({ message: 'Post not found' });
+    }
+
+    if (posts[0].user_id !== req.user.id) {
+      return res.status(401).json({ message: 'User not authorized' });
+    }
+
+    await pool.query('UPDATE posts SET caption = ? WHERE id = ?', [caption || '', req.params.id]);
+
+    const [updated] = await pool.query(
+      `SELECT p.*, u.username, u.profile_pic,
+       (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
+       (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count,
+       (SELECT COUNT(*) > 0 FROM likes WHERE post_id = p.id AND user_id = ?) as is_liked,
+       (SELECT COUNT(*) FROM saves WHERE post_id = p.id) as save_count,
+       (SELECT COUNT(*) > 0 FROM saves WHERE post_id = p.id AND user_id = ?) as is_saved
+       FROM posts p 
+       JOIN users u ON p.user_id = u.id 
+       WHERE p.id = ?`,
+      [req.user.id, req.user.id, req.params.id]
+    );
+
+    res.json({
+      ...updated[0],
+      is_liked: !!updated[0].is_liked,
+      is_saved: !!updated[0].is_saved
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
   }

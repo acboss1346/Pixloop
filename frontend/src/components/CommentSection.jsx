@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
 import { CommentItem } from "./CommentItem";
+import { Loader2 } from "lucide-react";
 
 export const CommentSection = ({ postId }) => {
   const [newCommentText, setNewCommentText] = useState("");
@@ -49,43 +50,49 @@ export const CommentSection = ({ postId }) => {
   };
 
   if (isLoading) {
-    return <div className="text-gray-400 p-2">Loading comments...</div>;
+    return (
+      <div className="flex items-center justify-center py-6 text-zinc-500 gap-2">
+        <Loader2 size={16} className="animate-spin text-purple-500" />
+        <span className="text-xs">Loading comments...</span>
+      </div>
+    );
   }
 
   if (error) {
-    return <div className="text-red-500 p-2">{error}</div>;
+    return <div className="text-red-500 text-xs p-2">{error}</div>;
   }
 
   return (
-    <div className="mt-4 border-t border-white/10 pt-4">
-      <h3 className="text-lg font-semibold mb-3">Comments</h3>
+    <div className="mt-4 border-t border-zinc-900 pt-4">
+      <h3 className="text-sm font-bold text-white mb-4">Comments</h3>
 
       {user ? (
-        <form onSubmit={handleSubmit} className="mb-4 flex flex-col gap-2">
+        <form onSubmit={handleSubmit} className="mb-6 flex flex-col gap-2">
           <textarea
             value={newCommentText}
             onChange={(e) => setNewCommentText(e.target.value)}
-            className="w-full border border-white/20 bg-black/20 p-2 rounded text-sm text-white focus:outline-none focus:border-white/40"
-            placeholder="Write a comment..."
+            className="w-full border border-zinc-800 bg-zinc-900 p-3 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-zinc-700 resize-none transition-colors"
+            placeholder="Add a comment..."
             rows={2}
           />
           <button
             type="submit"
             disabled={isPosting || !newCommentText.trim()}
-            className="self-end bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white px-4 py-1.5 rounded text-sm font-medium transition-colors cursor-pointer"
+            className="self-end bg-white text-black disabled:opacity-50 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center gap-1.5"
           >
-            {isPosting ? "Posting..." : "Post Comment"}
+            {isPosting && <Loader2 size={12} className="animate-spin" />}
+            {isPosting ? "Posting..." : "Post"}
           </button>
         </form>
       ) : (
-        <p className="mb-4 text-sm text-gray-400">
+        <p className="mb-4 text-xs text-zinc-500">
           You must be logged in to post a comment.
         </p>
       )}
 
-      <div className="space-y-4">
+      <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1">
         {comments.length === 0 ? (
-          <p className="text-sm text-gray-500 italic">No comments yet. Be the first to share your thoughts!</p>
+          <p className="text-xs text-zinc-500 italic">No comments yet. Be the first to share your thoughts!</p>
         ) : (
           comments.map((comment) => (
             <CommentItem key={comment.id} comment={comment} />

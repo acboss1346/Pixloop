@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
+import { Camera, Loader2 } from "lucide-react";
 
 export const RegisterPage = () => {
   const [username, setUsername] = useState("");
@@ -26,27 +27,33 @@ export const RegisterPage = () => {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-[80vh]">
-      <div className="w-full max-w-md p-8 space-y-8 bg-neutral-900 rounded-2xl shadow-xl border border-neutral-800">
-        <div className="text-center">
-          <h2 className="text-3xl font-bold text-white tracking-tight">Create an account</h2>
-          <p className="mt-2 text-sm text-neutral-400">Join PixLoop today</p>
+    <div className="flex items-center justify-center min-h-[85vh] px-4">
+      <div className="w-full max-w-md p-8 space-y-8 bg-zinc-950 rounded-2xl border border-zinc-900 shadow-2xl relative overflow-hidden">
+        {/* Glow decorative element */}
+        <div className="absolute top-0 right-0 w-48 h-48 bg-purple-600/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
+
+        <div className="text-center space-y-3">
+          <div className="mx-auto w-12 h-12 bg-gradient-to-tr from-purple-500 to-pink-500 rounded-2xl flex items-center justify-center text-white shadow-xl">
+            <Camera size={24} />
+          </div>
+          <h2 className="text-2xl font-extrabold text-white tracking-tight">Create an account</h2>
+          <p className="text-sm text-zinc-500">Join PixLoop community today</p>
         </div>
 
-        <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
+        <form className="space-y-5" onSubmit={handleSubmit}>
           {error && (
-            <div className="p-3 text-sm text-red-500 bg-red-500/10 border border-red-500/20 rounded-lg text-center">
+            <div className="p-3 text-xs font-semibold text-red-400 bg-red-950/20 border border-red-900/30 rounded-xl text-center">
               {error}
             </div>
           )}
           
           <div className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-neutral-300">Username</label>
+              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">Username</label>
               <input
                 type="text"
                 required
-                className="w-full px-4 py-3 mt-1 bg-neutral-950 border border-neutral-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white transition-all outline-none"
+                className="w-full px-4 py-3 mt-2 bg-zinc-900 border border-zinc-800 focus:border-purple-500 rounded-xl text-white text-sm outline-none transition-all"
                 placeholder="johndoe"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
@@ -54,11 +61,11 @@ export const RegisterPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-300">Email address</label>
+              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">Email address</label>
               <input
                 type="email"
                 required
-                className="w-full px-4 py-3 mt-1 bg-neutral-950 border border-neutral-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white transition-all outline-none"
+                className="w-full px-4 py-3 mt-2 bg-zinc-900 border border-zinc-800 focus:border-purple-500 rounded-xl text-white text-sm outline-none transition-all"
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
@@ -66,11 +73,11 @@ export const RegisterPage = () => {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-neutral-300">Password</label>
+              <label className="block text-xs font-semibold text-zinc-400 uppercase tracking-wider">Password</label>
               <input
                 type="password"
                 required
-                className="w-full px-4 py-3 mt-1 bg-neutral-950 border border-neutral-800 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent text-white transition-all outline-none"
+                className="w-full px-4 py-3 mt-2 bg-zinc-900 border border-zinc-800 focus:border-purple-500 rounded-xl text-white text-sm outline-none transition-all"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -81,15 +88,16 @@ export const RegisterPage = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full px-4 py-3 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-xl focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 focus:ring-offset-neutral-900 transition-all disabled:opacity-50"
+            className="w-full px-4 py-3 text-sm font-bold text-black bg-white hover:bg-zinc-200 rounded-xl transition-all disabled:opacity-50 flex items-center justify-center gap-2 cursor-pointer"
           >
+            {loading && <Loader2 size={16} className="animate-spin" />}
             {loading ? "Creating account..." : "Sign up"}
           </button>
         </form>
 
-        <p className="text-center text-sm text-neutral-400 mt-6">
+        <p className="text-center text-sm text-zinc-500 mt-6">
           Already have an account?{" "}
-          <Link to="/login" className="font-medium text-blue-500 hover:text-blue-400 transition-colors">
+          <Link to="/login" className="font-semibold text-purple-400 hover:text-purple-300 transition-colors">
             Log in
           </Link>
         </p>
