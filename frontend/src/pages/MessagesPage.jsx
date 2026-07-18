@@ -6,7 +6,7 @@ import { MessageSquare, Send, UserCheck, UserX, Loader2, ArrowLeft } from "lucid
 import "./MessagesPage.css";
 
 export const MessagesPage = () => {
-  const { user } = useAuth();
+  const { user, unreadData, fetchUnreadCount } = useAuth();
   const location = useLocation();
   
   const [friends, setFriends] = useState([]);
@@ -78,6 +78,7 @@ export const MessagesPage = () => {
     try {
       const res = await api.get(`/chat/${friendId}`);
       setMessages(res.data);
+      fetchUnreadCount();
     } catch (err) {
       console.error("Failed to fetch message logs", err);
     } finally {
@@ -209,9 +210,14 @@ export const MessagesPage = () => {
                       {friend.username?.charAt(0).toUpperCase()}
                     </div>
                   )}
-                  <div className="friend-meta">
+                  <div className="friend-meta relative flex-grow pr-8">
                     <span className="friend-name">{friend.username}</span>
                     <span className="friend-status-text">Click to message</span>
+                    {unreadData?.bySender[friend.id] > 0 && (
+                      <span className="absolute right-0 top-1/2 -translate-y-1/2 bg-purple-600 text-white text-[10px] w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                        {unreadData.bySender[friend.id]}
+                      </span>
+                    )}
                   </div>
                 </div>
               ))}

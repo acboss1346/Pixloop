@@ -31,6 +31,12 @@ export const getChatMessages = async (req, res) => {
       [userId, friendId, friendId, userId]
     );
 
+    // Mark messages received from this friend as read
+    await pool.query(
+      'UPDATE messages SET is_read = 1 WHERE sender_id = ? AND receiver_id = ? AND is_read = 0',
+      [friendId, userId]
+    );
+
     res.json(messages);
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
@@ -75,6 +81,41 @@ export const sendChatMessage = async (req, res) => {
 
     res.status(201).json(newMsg[0]);
   } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+// @desc    Get total unread messages count and grouped by sender
+// @route   GET /api/chat/unread/count
+// @access  Private
+export const getUnreadMessagesCount = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Total unread count
+    const [totalRes] = await pool.query(
+      'SELECT COUNT(*) as count FROM messages WHERE receiver_id = ? AND is_read = 0',
+      [userId]
+    );
+
+    // Grouped by sender
+    const [groupedRes] = await pool.query(
+      'SELECT sender_id, COUNT(*) as count FROM messages WHERE receiver_id = ? AND is_read = 0 GROUP BY sender_id',
+      [userId]
+    );
+
+    const bySender = {};
+    groupedRes.forEach(row => {
+      bySender[row.sender_id] = row.count;
+    });
+
+    res.json({
+      success: true,
+      total: totalRes[0].count,
+      bySender
+    });
+  } catch (error) {
+    console.error("getUnreadMessagesCount ERROR:", error.message);
     res.status(500).json({ message: 'Server Error', error: error.message });
   }
 };

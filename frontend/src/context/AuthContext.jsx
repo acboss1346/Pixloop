@@ -64,6 +64,35 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
   };
 
+  const [unreadData, setUnreadData] = useState({ total: 0, bySender: {} });
+
+  const fetchUnreadCount = async () => {
+    if (!user) return;
+    try {
+      const res = await api.get("/chat/unread/count");
+      if (res.data && res.data.success) {
+        setUnreadData({
+          total: res.data.total,
+          bySender: res.data.bySender || {}
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch unread count", err);
+    }
+  };
+
+  useEffect(() => {
+    if (!user) {
+      setUnreadData({ total: 0, bySender: {} });
+      return;
+    }
+
+    fetchUnreadCount();
+
+    const interval = setInterval(fetchUnreadCount, 5000);
+    return () => clearInterval(interval);
+  }, [user]);
+
   const updateUser = (updatedData) => {
     const merged = { ...user, ...updatedData };
     const updatedUser = {
@@ -76,7 +105,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, register, logout, loading, updateUser }}>
+    <AuthContext.Provider value={{ user, login, register, logout, loading, updateUser, unreadData, fetchUnreadCount }}>
       {!loading && children}
     </AuthContext.Provider>
   );

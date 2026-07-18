@@ -6,7 +6,7 @@ import api from "../services/api";
 import "./Navbar.css";
 
 export const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, unreadData } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   
@@ -70,7 +70,14 @@ export const Navbar = () => {
           </button>
 
           <Link to="/messages" className={`sidebar-link ${isActive("/messages") ? "active" : ""}`}>
-            <MessageSquare size={22} />
+            <div className="relative flex items-center justify-center">
+              <MessageSquare size={22} />
+              {unreadData?.total > 0 && (
+                <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] w-4 h-4 rounded-full flex items-center justify-center font-bold">
+                  {unreadData.total}
+                </span>
+              )}
+            </div>
             <span className="link-label">Messages</span>
           </Link>
 
@@ -112,8 +119,15 @@ export const Navbar = () => {
         <button onClick={() => setShowSearch(true)} className="mobile-nav-item bg-transparent border-none cursor-pointer">
           <Search size={24} />
         </button>
-        <Link to="/messages" className={`mobile-nav-item ${isActive("/messages") ? "active" : ""}`}>
-          <MessageSquare size={24} />
+        <Link to="/messages" className={`mobile-nav-item relative ${isActive("/messages") ? "active" : ""}`}>
+          <div className="relative flex items-center justify-center">
+            <MessageSquare size={24} />
+            {unreadData?.total > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[9px] w-4.5 h-4.5 rounded-full flex items-center justify-center font-bold">
+                {unreadData.total}
+              </span>
+            )}
+          </div>
         </Link>
         <Link to="/groups" className={`mobile-nav-item ${isActive("/groups") ? "active" : ""}`}>
           <Users size={24} />
