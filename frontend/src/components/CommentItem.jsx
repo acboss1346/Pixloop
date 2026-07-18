@@ -1,5 +1,6 @@
 import { formatDistanceToNow } from "date-fns";
 import { Link } from "react-router-dom";
+import { parseSafeDate } from "../utils/date";
 
 export const CommentItem = ({ comment }) => {
   return (
@@ -21,7 +22,7 @@ export const CommentItem = ({ comment }) => {
           <span className="text-zinc-300 break-words leading-relaxed">{comment.comment}</span>
         </div>
         <p className="text-[10px] text-zinc-500 mt-1">
-          {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
+          {formatDistanceToNow(parseSafeDate(comment.created_at), { addSuffix: true })}
         </p>
       </div>
     </div>

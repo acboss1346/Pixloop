@@ -5,6 +5,7 @@ import { formatDistanceToNow } from "date-fns";
 import { CommentSection } from "./CommentSection";
 import api from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { parseSafeDate } from "../utils/date";
 import "./PostItem.css";
 
 export const PostItem = ({ post: initialPost, onLikeToggle, onSaveToggle }) => {
@@ -84,7 +85,7 @@ export const PostItem = ({ post: initialPost, onLikeToggle, onSaveToggle }) => {
               {post.username}
             </Link>
             <span className="post-time">
-              {formatDistanceToNow(new Date(post.created_at), { addSuffix: true })}
+              {formatDistanceToNow(parseSafeDate(post.created_at), { addSuffix: true })}
             </span>
           </div>
         </div>
