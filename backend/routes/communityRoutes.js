@@ -3,6 +3,7 @@ import {
   getCommunities, 
   getTrendingHashtags, 
   joinCommunity, 
+  leaveCommunity,
   createCommunity, 
   getCommunityById, 
   deleteCommunity, 
@@ -21,6 +22,7 @@ router.get('/trending/hashtags', getTrendingHashtags);
 router.post('/', protect, upload.single('logo'), createCommunity);
 router.get('/:id', protect, getCommunityById);
 router.post('/:id/join', protect, joinCommunity);
+router.post('/:id/leave', protect, leaveCommunity);
 router.delete('/:id', protect, deleteCommunity);
 router.put('/:id', protect, upload.single('logo'), updateCommunity);
 

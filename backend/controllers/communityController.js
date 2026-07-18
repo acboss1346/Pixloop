@@ -87,6 +87,36 @@ export const joinCommunity = async (req, res) => {
   }
 };
 
+// @desc    Leave a community
+// @route   POST /api/communities/:id/leave
+// @access  Private
+export const leaveCommunity = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Check if member
+    const [existing] = await pool.query(
+      'SELECT * FROM community_members WHERE user_id = ? AND community_id = ?',
+      [userId, id]
+    );
+
+    if (existing.length === 0) {
+      return res.status(400).json({ success: false, message: 'Not a member of this community' });
+    }
+
+    await pool.query(
+      'DELETE FROM community_members WHERE user_id = ? AND community_id = ?',
+      [userId, id]
+    );
+
+    res.json({ success: true, message: 'Left community successfully' });
+  } catch (error) {
+    console.error('leaveCommunity ERROR:', error.message);
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+};
+
 import { uploadOnCloudinary } from '../utils/cloudinary.js';
 
 // @desc    Create a community
