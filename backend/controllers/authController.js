@@ -181,18 +181,15 @@ export const updateProfilePic = async (req, res) => {
   }
 };
 
-// @desc    Search users by username
-// @route   GET /api/auth/search-users
-// @access  Private
 export const searchUsers = async (req, res) => {
   try {
-    const { query } = req.query;
+    const query = (req.query.query || '').trim();
     if (!query) {
       return res.json([]);
     }
     const [users] = await pool.query(
-      'SELECT id, username, profile_pic FROM users WHERE username LIKE ? LIMIT 10',
-      [`%${query}%`]
+      'SELECT id, username, profile_pic FROM users WHERE username LIKE ? AND id != ? LIMIT 10',
+      [`%${query}%`, req.user.id]
     );
     res.json(users);
   } catch (error) {

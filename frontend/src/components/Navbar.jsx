@@ -46,16 +46,18 @@ export const Navbar = () => {
     const delayDebounceFn = setTimeout(async () => {
       setSearching(true);
       try {
+        const query = searchQuery.trim();
         // Fetch users
-        const usersRes = await api.get(`/auth/search-users?query=${searchQuery}`);
+        const usersRes = await api.get(`/auth/search-users?query=${query}`);
+        console.log("SEARCH USERS MATCHED:", usersRes.data);
         setUserResults(usersRes.data);
 
         // Fetch groups and filter locally (or perform search)
         const groupsRes = await api.get("/communities");
         if (groupsRes.data && groupsRes.data.data) {
           const filtered = groupsRes.data.data.filter(g => 
-            g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            (g.description && g.description.toLowerCase().includes(searchQuery.toLowerCase()))
+            g.name.toLowerCase().includes(query.toLowerCase()) ||
+            (g.description && g.description.toLowerCase().includes(query.toLowerCase()))
           );
           setGroupResults(filtered);
         }
