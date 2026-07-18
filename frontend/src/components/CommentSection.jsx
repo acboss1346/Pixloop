@@ -36,11 +36,14 @@ export const CommentSection = ({ postId }) => {
     
     try {
       setIsPosting(true);
-      const response = await api.post(`/posts/${postId}/comments`, {
+      await api.post(`/posts/${postId}/comments`, {
         comment: newCommentText
       });
-      setComments([...comments, response.data]);
       setNewCommentText("");
+      
+      // Fetch fresh, joined comments from the database to sync details
+      const response = await api.get(`/posts/${postId}/comments`);
+      setComments(response.data);
     } catch (err) {
       console.error("Failed to post comment", err);
       setError("Error posting comment.");
@@ -58,13 +61,11 @@ export const CommentSection = ({ postId }) => {
     );
   }
 
-  if (error) {
-    return <div className="text-red-500 text-xs p-2">{error}</div>;
-  }
-
   return (
     <div className="mt-4 border-t border-zinc-900 pt-4">
       <h3 className="text-sm font-bold text-white mb-4">Comments</h3>
+
+      {error && <div className="text-red-500 text-xs mb-3 bg-red-950/20 border border-red-900/30 p-2.5 rounded-xl font-semibold">{error}</div>}
 
       {user ? (
         <form onSubmit={handleSubmit} className="mb-6 flex flex-col gap-2">
