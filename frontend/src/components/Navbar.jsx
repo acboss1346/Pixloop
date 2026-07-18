@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import { Home as HomeIcon, PlusSquare, User, Search, Users, LogOut, X, Loader2 } from "lucide-react";
-import { NotificationsDropdown } from "./NotificationsDropdown";
+import { Home as HomeIcon, PlusSquare, User, Search, Users, LogOut, X, Loader2, MessageSquare } from "lucide-react";
 import api from "../services/api";
 import "./Navbar.css";
 
@@ -116,10 +115,10 @@ export const Navbar = () => {
             <span className="link-label">Communities</span>
           </Link>
 
-          <div className="sidebar-link-notifications">
-            <NotificationsDropdown />
-            <span className="link-label">Notifications</span>
-          </div>
+          <Link to="/messages" className={`sidebar-link ${isActive("/messages") ? "active" : ""}`}>
+            <MessageSquare size={22} />
+            <span className="link-label">Messages</span>
+          </Link>
 
           <Link to="/profile" className={`sidebar-link ${isActive("/profile") ? "active" : ""}`}>
             {user?.profile_pic ? (
@@ -250,9 +249,9 @@ export const Navbar = () => {
         <Link to="/create" className={`mobile-nav-item ${isActive("/create") ? "active" : ""}`}>
           <PlusSquare size={24} />
         </Link>
-        <div className="mobile-nav-item">
-          <NotificationsDropdown />
-        </div>
+        <Link to="/messages" className={`mobile-nav-item ${isActive("/messages") ? "active" : ""}`}>
+          <MessageSquare size={24} />
+        </Link>
         <Link to="/profile" className={`mobile-nav-item ${isActive("/profile") ? "active" : ""}`}>
           {user?.profile_pic ? (
             <img src={user.profile_pic} alt={user.username} className="mobile-avatar" />

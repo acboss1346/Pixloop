@@ -44,7 +44,7 @@ export const createPost = async (req, res) => {
 // @access  Private
 export const getPosts = async (req, res) => {
   try {
-    const { community_id, user_id } = req.query;
+    const { community_id, user_id, liked_by, saved_by } = req.query;
     
     let query = `SELECT p.*, u.username, u.profile_pic,
        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
@@ -66,6 +66,16 @@ export const getPosts = async (req, res) => {
     if (user_id) {
       whereClauses.push(`p.user_id = ?`);
       queryParams.push(user_id);
+    }
+
+    if (liked_by) {
+      whereClauses.push(`p.id IN (SELECT post_id FROM likes WHERE user_id = ?)`);
+      queryParams.push(liked_by);
+    }
+
+    if (saved_by) {
+      whereClauses.push(`p.id IN (SELECT post_id FROM saves WHERE user_id = ?)`);
+      queryParams.push(saved_by);
     }
 
     if (whereClauses.length > 0) {

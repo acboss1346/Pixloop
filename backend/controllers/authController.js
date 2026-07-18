@@ -215,7 +215,24 @@ export const getUserProfile = async (req, res) => {
       return res.status(404).json({ message: 'User not found' });
     }
 
-    res.json(users[0]);
+    const targetUser = users[0];
+    
+    // Get friendship status if target is not the current user
+    let friendship = null;
+    if (targetUser.id !== req.user.id) {
+      const [relation] = await pool.query(
+        'SELECT id, sender_id, receiver_id, status FROM friend_requests WHERE (sender_id = ? AND receiver_id = ?) OR (sender_id = ? AND receiver_id = ?)',
+        [req.user.id, targetUser.id, targetUser.id, req.user.id]
+      );
+      if (relation.length > 0) {
+        friendship = relation[0];
+      }
+    }
+
+    res.json({
+      ...targetUser,
+      friendship
+    });
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
   }

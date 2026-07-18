@@ -26,11 +26,15 @@ import authRoutes from './routes/authRoutes.js';
 import postRoutes from './routes/postRoutes.js';
 import communityRoutes from './routes/communityRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
+import friendRoutes from './routes/friendRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
 
 app.use('/api/auth', authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/communities', communityRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/friends', friendRoutes);
+app.use('/api/chat', chatRoutes);
 
 import pool from './config/db.js';
 
