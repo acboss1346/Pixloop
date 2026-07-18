@@ -19,8 +19,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await api.post("/auth/login", { email, password });
       if (response.data) {
-        localStorage.setItem("user", JSON.stringify(response.data));
-        setUser(response.data);
+        const normalizedUser = {
+          ...response.data,
+          id: response.data.id || response.data._id,
+          _id: response.data._id || response.data.id
+        };
+        localStorage.setItem("user", JSON.stringify(normalizedUser));
+        setUser(normalizedUser);
         return true;
       }
     } catch (error) {
@@ -33,8 +38,13 @@ export const AuthProvider = ({ children }) => {
     try {
       const response = await api.post("/auth/register", { username, email, password });
       if (response.data) {
-        localStorage.setItem("user", JSON.stringify(response.data));
-        setUser(response.data);
+        const normalizedUser = {
+          ...response.data,
+          id: response.data.id || response.data._id,
+          _id: response.data._id || response.data.id
+        };
+        localStorage.setItem("user", JSON.stringify(normalizedUser));
+        setUser(normalizedUser);
         return true;
       }
     } catch (error) {
@@ -49,7 +59,12 @@ export const AuthProvider = ({ children }) => {
   };
 
   const updateUser = (updatedData) => {
-    const updatedUser = { ...user, ...updatedData };
+    const merged = { ...user, ...updatedData };
+    const updatedUser = {
+      ...merged,
+      id: merged.id || merged._id,
+      _id: merged._id || merged.id
+    };
     localStorage.setItem("user", JSON.stringify(updatedUser));
     setUser(updatedUser);
   };

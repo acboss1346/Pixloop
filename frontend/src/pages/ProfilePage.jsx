@@ -50,13 +50,14 @@ export const ProfilePage = () => {
         
         setProfileUser(targetUser);
 
+        const targetUserId = targetUser.id || targetUser._id;
         // Fetch posts for target user depending on tab and profile ownership
-        let postsUrl = `/posts?user_id=${targetUser._id || targetUser.id}`;
+        let postsUrl = `/posts?user_id=${targetUserId}`;
         if (isOwnProfile) {
           if (activeTab === "liked") {
-            postsUrl = `/posts?liked_by=${targetUser._id || targetUser.id}`;
+            postsUrl = `/posts?liked_by=${targetUserId}`;
           } else if (activeTab === "saved") {
-            postsUrl = `/posts?saved_by=${targetUser._id || targetUser.id}`;
+            postsUrl = `/posts?saved_by=${targetUserId}`;
           }
         }
         

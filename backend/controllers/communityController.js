@@ -246,3 +246,78 @@ export const updateCommunity = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 };
+
+// @desc    Get all chat messages inside a community
+// @route   GET /api/communities/:id/chat
+// @access  Protected
+export const getCommunityMessages = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    // Check if the community exists
+    const [community] = await pool.query('SELECT * FROM communities WHERE id = ?', [id]);
+    if (community.length === 0) {
+      return res.status(404).json({ success: false, message: 'Community not found' });
+    }
+
+    // Verify if user is member of the community
+    const [member] = await pool.query('SELECT * FROM community_members WHERE community_id = ? AND user_id = ?', [id, userId]);
+    if (member.length === 0) {
+      return res.status(403).json({ success: false, message: 'You must join the community to view group chats' });
+    }
+
+    const [messages] = await pool.query(
+      `SELECT gm.*, u.username, u.profile_pic
+       FROM group_messages gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.community_id = ?
+       ORDER BY gm.created_at ASC`,
+      [id]
+    );
+
+    res.json({ success: true, data: messages });
+  } catch (error) {
+    console.error('getCommunityMessages ERROR:', error.message);
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+};
+
+// @desc    Post a chat message inside a community
+// @route   POST /api/communities/:id/chat
+// @access  Protected
+export const sendCommunityMessage = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const { message } = req.body;
+
+    if (!message || !message.trim()) {
+      return res.status(400).json({ success: false, message: 'Message content is required' });
+    }
+
+    // Verify if user is member of the community
+    const [member] = await pool.query('SELECT * FROM community_members WHERE community_id = ? AND user_id = ?', [id, userId]);
+    if (member.length === 0) {
+      return res.status(403).json({ success: false, message: 'You must join the community to send chat messages' });
+    }
+
+    const [result] = await pool.query(
+      'INSERT INTO group_messages (community_id, user_id, message) VALUES (?, ?, ?)',
+      [id, userId, message.trim()]
+    );
+
+    const [newMsg] = await pool.query(
+      `SELECT gm.*, u.username, u.profile_pic
+       FROM group_messages gm
+       JOIN users u ON gm.user_id = u.id
+       WHERE gm.id = ?`,
+      [result.insertId]
+    );
+
+    res.status(201).json({ success: true, data: newMsg[0] });
+  } catch (error) {
+    console.error('sendCommunityMessage ERROR:', error.message);
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+};

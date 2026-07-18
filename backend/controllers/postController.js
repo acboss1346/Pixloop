@@ -58,24 +58,29 @@ export const getPosts = async (req, res) => {
     const queryParams = [req.user.id, req.user.id];
     const whereClauses = [];
 
-    if (community_id) {
+    const communityId = community_id && community_id !== 'undefined' && community_id !== 'null' ? parseInt(community_id) : null;
+    const userId = user_id && user_id !== 'undefined' && user_id !== 'null' ? parseInt(user_id) : null;
+    const likedBy = liked_by && liked_by !== 'undefined' && liked_by !== 'null' ? parseInt(liked_by) : null;
+    const savedBy = saved_by && saved_by !== 'undefined' && saved_by !== 'null' ? parseInt(saved_by) : null;
+
+    if (communityId) {
       whereClauses.push(`p.community_id = ?`);
-      queryParams.push(community_id);
+      queryParams.push(communityId);
     }
 
-    if (user_id) {
+    if (userId) {
       whereClauses.push(`p.user_id = ?`);
-      queryParams.push(user_id);
+      queryParams.push(userId);
     }
 
-    if (liked_by) {
+    if (likedBy) {
       whereClauses.push(`p.id IN (SELECT post_id FROM likes WHERE user_id = ?)`);
-      queryParams.push(liked_by);
+      queryParams.push(likedBy);
     }
 
-    if (saved_by) {
+    if (savedBy) {
       whereClauses.push(`p.id IN (SELECT post_id FROM saves WHERE user_id = ?)`);
-      queryParams.push(saved_by);
+      queryParams.push(savedBy);
     }
 
     if (whereClauses.length > 0) {
