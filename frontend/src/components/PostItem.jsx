@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Heart, MessageCircle, MoreVertical, Edit2 } from "lucide-react";
+import { Heart, MessageCircle, Bookmark, MoreVertical, Edit2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { CommentSection } from "./CommentSection";
 import api from "../services/api";
@@ -8,7 +8,7 @@ import { useAuth } from "../context/AuthContext";
 import { parseSafeDate } from "../utils/date";
 import "./PostItem.css";
 
-export const PostItem = ({ post: initialPost, onLikeToggle }) => {
+export const PostItem = ({ post: initialPost, onLikeToggle, onSaveToggle }) => {
   const [post, setPost] = useState(initialPost);
   const [showComments, setShowComments] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -51,6 +51,19 @@ export const PostItem = ({ post: initialPost, onLikeToggle }) => {
     // Call parent handler
     if (onLikeToggle) {
       await onLikeToggle();
+    }
+  };
+
+  const handleSaveClick = async () => {
+    const isSaved = post.is_saved;
+    setPost({
+      ...post,
+      is_saved: !isSaved,
+      save_count: isSaved ? (post.save_count || 0) - 1 : (post.save_count || 0) + 1
+    });
+
+    if (onSaveToggle) {
+      await onSaveToggle();
     }
   };
 
@@ -161,7 +174,13 @@ export const PostItem = ({ post: initialPost, onLikeToggle }) => {
         >
           <MessageCircle size={24} color="#ffffff" />
         </button>
-
+        <button 
+          onClick={handleSaveClick}
+          className={`post-action-btn save-btn ml-auto ${post.is_saved ? 'active' : ''}`}
+          title={post.is_saved ? 'Unsave' : 'Save'}
+        >
+          <Bookmark size={24} fill={post.is_saved ? "#ffffff" : "none"} color="#ffffff" />
+        </button>
       </div>
 
       {/* Engagement Stats */}

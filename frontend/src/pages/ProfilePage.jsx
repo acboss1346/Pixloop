@@ -2,7 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { LogOut, Heart, MessageCircle, Settings, Upload, X, Loader2, Image as ImageIcon } from "lucide-react";
+import { LogOut, Heart, MessageCircle, Settings, Upload, X, Loader2, Image as ImageIcon, MessageSquare, UserPlus, UserCheck, UserMinus, FolderHeart, Bookmark } from "lucide-react";
 
 export const ProfilePage = () => {
   const { username: paramUsername } = useParams();
@@ -14,6 +14,9 @@ export const ProfilePage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   
+  // Profile tabs state: 'posts' (uploaded), 'liked', 'saved'
+  const [activeTab, setActiveTab] = useState("posts");
+
   // Modals state
   const [showEditModal, setShowEditModal] = useState(false);
   const [editUsername, setEditUsername] = useState("");
@@ -47,16 +50,28 @@ export const ProfilePage = () => {
         
         setProfileUser(targetUser);
 
-        // Fetch posts for target user
+        // Fetch posts for target user depending on tab and profile ownership
         const targetUserId = targetUser.id || targetUser._id;
-        const postsRes = await api.get(`/posts?user_id=${targetUserId}`);
+        let postsUrl = `/posts?user_id=${targetUserId}`;
+        if (isOwnProfile) {
+          if (activeTab === "liked") {
+            postsUrl = `/posts?liked_by=${targetUserId}`;
+          } else if (activeTab === "saved") {
+            postsUrl = `/posts?saved_by=${targetUserId}`;
+          }
+        }
         
-        // Defensive local filtering fallback
-        const filteredPosts = postsRes.data.filter(p => 
-          p.user_id === targetUserId || 
-          p.username?.toLowerCase() === targetUser.username?.toLowerCase()
-        );
-        setPosts(filteredPosts);
+        const postsRes = await api.get(postsUrl);
+
+        // Defensive client-side filtering fallback for uploaded posts
+        let filtered = postsRes.data;
+        if (activeTab === "posts") {
+          filtered = postsRes.data.filter(p => 
+            p.user_id === targetUserId || 
+            p.username?.toLowerCase() === targetUser.username?.toLowerCase()
+          );
+        }
+        setPosts(filtered);
       } catch (err) {
         console.error("Failed to load profile", err);
         setError(err.response?.data?.message || "User profile not found");
@@ -66,7 +81,7 @@ export const ProfilePage = () => {
     };
 
     fetchProfileData();
-  }, [paramUsername, currentUser]);
+  }, [paramUsername, currentUser, activeTab]);
 
   const handleLogout = () => {
     logout();
@@ -124,6 +139,54 @@ export const ProfilePage = () => {
     } finally {
       setSavingDetails(false);
     }
+  };
+
+  // Friendship interaction handlers
+  const handleSendFriendRequest = async () => {
+    try {
+      await api.post("/friends/request", { receiver_id: profileUser.id });
+      // Reload profile details to update friendship status
+      const userRes = await api.get(`/auth/user/${paramUsername}`);
+      setProfileUser(userRes.data);
+      alert("Friend request sent!");
+    } catch (err) {
+      console.error("Failed to send friend request", err);
+      alert("Failed to send friend request");
+    }
+  };
+
+  const handleAcceptFriendRequest = async () => {
+    try {
+      await api.put(`/friends/request/${profileUser.friendship.id}/accept`);
+      // Reload profile details to update friendship status
+      const userRes = await api.get(`/auth/user/${paramUsername}`);
+      setProfileUser(userRes.data);
+      alert("Friend request accepted!");
+    } catch (err) {
+      console.error("Failed to accept friend request", err);
+    }
+  };
+
+  const handleRemoveFriendship = async () => {
+    const confirmMsg = profileUser.friendship.status === 'accepted' 
+      ? "Are you sure you want to unfriend this user?" 
+      : "Are you sure you want to cancel this request?";
+      
+    if (!window.confirm(confirmMsg)) return;
+    
+    try {
+      await api.delete(`/friends/request/${profileUser.friendship.id}`);
+      // Reload profile details to update friendship status
+      const userRes = await api.get(`/auth/user/${paramUsername}`);
+      setProfileUser(userRes.data);
+      alert("Friendship or request removed");
+    } catch (err) {
+      console.error("Failed to remove friendship", err);
+    }
+  };
+
+  const handleMessageRedirect = () => {
+    navigate('/messages', { state: { selectFriendId: profileUser.id } });
   };
 
   if (loading) {
@@ -213,7 +276,7 @@ export const ProfilePage = () => {
             <>
               <button
                 onClick={() => setShowEditModal(true)}
-                className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 text-white rounded-xl transition-colors font-semibold border border-zinc-800 text-sm cursor-pointer"
+                className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-850 text-white rounded-xl transition-colors font-semibold border border-zinc-800 text-sm cursor-pointer"
               >
                 <Settings size={16} />
                 Edit Profile
@@ -227,16 +290,116 @@ export const ProfilePage = () => {
               </button>
             </>
           ) : (
-            <span className="text-xs font-semibold bg-zinc-900 text-zinc-400 px-4 py-2 rounded-full border border-zinc-800">
-              Visiting
-            </span>
+            <div className="flex items-center gap-2">
+              {/* No relation -> Add Friend */}
+              {!profileUser.friendship && (
+                <button
+                  onClick={handleSendFriendRequest}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white text-black hover:opacity-90 rounded-xl transition-all font-bold text-sm cursor-pointer"
+                >
+                  <UserPlus size={16} />
+                  Add Friend
+                </button>
+              )}
+
+              {/* Pending Request */}
+              {profileUser.friendship && profileUser.friendship.status === 'pending' && (
+                profileUser.friendship.sender_id === currentUser.id ? (
+                  // Sent request
+                  <button
+                    onClick={handleRemoveFriendship}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-zinc-900 text-zinc-400 hover:text-white rounded-xl transition-all font-semibold border border-zinc-800 text-sm cursor-pointer"
+                  >
+                    <UserMinus size={16} />
+                    Cancel Request
+                  </button>
+                ) : (
+                  // Received request
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleAcceptFriendRequest}
+                      className="flex items-center gap-2 px-4 py-2 bg-white text-black hover:opacity-95 rounded-xl font-bold text-xs cursor-pointer"
+                    >
+                      <UserCheck size={14} />
+                      Accept
+                    </button>
+                    <button
+                      onClick={handleRemoveFriendship}
+                      className="flex items-center gap-2 px-4 py-2 bg-zinc-900 text-red-400 hover:text-red-300 border border-zinc-800 rounded-xl font-semibold text-xs cursor-pointer"
+                    >
+                      Decline
+                    </button>
+                  </div>
+                )
+              )}
+
+              {/* Accepted Relationship */}
+              {profileUser.friendship && profileUser.friendship.status === 'accepted' && (
+                <>
+                  <button
+                    onClick={handleMessageRedirect}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl transition-colors font-bold text-sm cursor-pointer"
+                  >
+                    <MessageSquare size={16} />
+                    Message
+                  </button>
+                  <button
+                    onClick={handleRemoveFriendship}
+                    className="flex items-center gap-2 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-850 text-zinc-400 hover:text-white border border-zinc-800 rounded-xl transition-colors font-semibold text-sm cursor-pointer"
+                    title="Remove Friend"
+                  >
+                    <UserMinus size={16} />
+                    Unfriend
+                  </button>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
 
-      <h2 className="text-xl font-bold text-white mb-6 tracking-tight border-b border-zinc-900 pb-4">
-        {isOwnProfile ? "Your Posts" : `${profileUser.username}'s Posts`}
-      </h2>
+      {/* Tabs Layout (Only for Own Profile) */}
+      {isOwnProfile ? (
+        <div className="flex border-b border-zinc-900 mb-8 justify-center sm:justify-start gap-8">
+          <button
+            onClick={() => setActiveTab("posts")}
+            className={`pb-4 px-2 font-bold text-sm flex items-center gap-2 transition-all bg-transparent border-none cursor-pointer ${
+              activeTab === "posts"
+                ? "text-white border-b-2 border-purple-500"
+                : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <ImageIcon size={16} />
+            Uploaded
+          </button>
+          <button
+            onClick={() => setActiveTab("liked")}
+            className={`pb-4 px-2 font-bold text-sm flex items-center gap-2 transition-all bg-transparent border-none cursor-pointer ${
+              activeTab === "liked"
+                ? "text-white border-b-2 border-purple-500"
+                : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <FolderHeart size={16} />
+            Liked
+          </button>
+          <button
+            onClick={() => setActiveTab("saved")}
+            className={`pb-4 px-2 font-bold text-sm flex items-center gap-2 transition-all bg-transparent border-none cursor-pointer ${
+              activeTab === "saved"
+                ? "text-white border-b-2 border-purple-500"
+                : "text-zinc-500 hover:text-zinc-300"
+            }`}
+          >
+            <Bookmark size={16} />
+            Saved
+          </button>
+        </div>
+      ) : (
+        <h2 className="text-xl font-bold text-white mb-6 tracking-tight border-b border-zinc-900 pb-4">
+          {profileUser.username}'s Posts
+        </h2>
+      )}
 
       {/* Profile Posts Grid */}
       {posts.length > 0 ? (
@@ -271,7 +434,7 @@ export const ProfilePage = () => {
           <p className="text-base font-semibold text-white mb-1">No posts found</p>
           <p className="text-sm">
             {isOwnProfile 
-              ? "You haven't uploaded any posts yet."
+              ? `You haven't ${activeTab === 'posts' ? 'uploaded' : activeTab === 'liked' ? 'liked' : 'saved'} any posts yet.`
               : "This user hasn't posted anything yet."}
           </p>
         </div>
