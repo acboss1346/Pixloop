@@ -45,6 +45,7 @@ export const createPost = async (req, res) => {
 export const getPosts = async (req, res) => {
   try {
     const { community_id, user_id, liked_by, saved_by } = req.query;
+    console.log("BACKEND GETPOSTS PARAMS:", { community_id, user_id, liked_by, saved_by });
     
     let query = `SELECT p.*, u.username, u.profile_pic,
        (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,

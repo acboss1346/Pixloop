@@ -10,7 +10,13 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const loggedInUser = localStorage.getItem("user");
     if (loggedInUser) {
-      setUser(JSON.parse(loggedInUser));
+      const parsed = JSON.parse(loggedInUser);
+      const normalized = {
+        ...parsed,
+        id: parsed.id || parsed._id,
+        _id: parsed._id || parsed.id
+      };
+      setUser(normalized);
     }
     setLoading(false);
   }, []);

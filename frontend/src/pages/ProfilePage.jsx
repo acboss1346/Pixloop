@@ -50,7 +50,13 @@ export const ProfilePage = () => {
         // Fetch posts for target user
         const targetUserId = targetUser.id || targetUser._id;
         const postsRes = await api.get(`/posts?user_id=${targetUserId}`);
-        setPosts(postsRes.data);
+        
+        // Defensive local filtering fallback
+        const filteredPosts = postsRes.data.filter(p => 
+          p.user_id === targetUserId || 
+          p.username?.toLowerCase() === targetUser.username?.toLowerCase()
+        );
+        setPosts(filteredPosts);
       } catch (err) {
         console.error("Failed to load profile", err);
         setError(err.response?.data?.message || "User profile not found");
