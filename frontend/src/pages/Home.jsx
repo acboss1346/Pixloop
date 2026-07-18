@@ -71,20 +71,6 @@ export const Home = () => {
     }
   };
 
-  const handleSaveToggle = async (postId, isSaved) => {
-    try {
-      if (isSaved) {
-        await api.delete(`/posts/${postId}/save`);
-        setPosts(posts.map(p => p.id === postId ? { ...p, is_saved: false, save_count: (p.save_count || 0) - 1 } : p));
-      } else {
-        await api.post(`/posts/${postId}/save`);
-        setPosts(posts.map(p => p.id === postId ? { ...p, is_saved: true, save_count: (p.save_count || 0) + 1 } : p));
-      }
-    } catch (err) {
-      console.error("Failed to toggle save:", err);
-    }
-  };
-
   if (error) {
     return (
       <div className="home-error">
@@ -127,7 +113,6 @@ export const Home = () => {
                 key={post.id} 
                 post={post} 
                 onLikeToggle={() => handleLikeToggle(post.id, post.is_liked)} 
-                onSaveToggle={() => handleSaveToggle(post.id, post.is_saved)}
               />
             ))}
           </div>

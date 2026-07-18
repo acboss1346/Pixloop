@@ -67,6 +67,8 @@ export const getPosts = async (req, res) => {
     if (communityId) {
       whereClauses.push(`p.community_id = ?`);
       queryParams.push(communityId);
+    } else if (!userId && !likedBy && !savedBy) {
+      whereClauses.push(`p.community_id IS NULL`);
     }
 
     if (userId) {

@@ -41,20 +41,6 @@ export const PostDetailPage = () => {
     }
   };
 
-  const handleSaveToggle = async (postId, isSaved) => {
-    try {
-      if (isSaved) {
-        await api.delete(`/posts/${postId}/save`);
-        setPost({ ...post, is_saved: false, save_count: (post.save_count || 0) - 1 });
-      } else {
-        await api.post(`/posts/${postId}/save`);
-        setPost({ ...post, is_saved: true, save_count: (post.save_count || 0) + 1 });
-      }
-    } catch (err) {
-      console.error("Failed to toggle save:", err);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -92,7 +78,6 @@ export const PostDetailPage = () => {
       <PostItem 
         post={post}
         onLikeToggle={() => handleLikeToggle(post.id, post.is_liked)}
-        onSaveToggle={() => handleSaveToggle(post.id, post.is_saved)}
       />
     </div>
   );
