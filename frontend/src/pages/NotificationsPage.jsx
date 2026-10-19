@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Bell, CheckCheck, Heart, MessageSquare, UserPlus, Users, Loader2, ArrowLeft, RefreshCw } from "lucide-react";
+import { Bell, Heart, MessageSquare, UserPlus, Users, Loader2, ArrowLeft, RefreshCw } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useNotifications } from "../context/NotificationContext";
 import { parseSafeDate } from "../utils/date";
@@ -13,9 +13,7 @@ export const NotificationsPage = () => {
     notifications,
     unreadCount,
     loading,
-    markingAll,
     fetchNotifications,
-    markAllAsRead,
     markAsRead
   } = useNotifications();
 
@@ -101,23 +99,6 @@ export const NotificationsPage = () => {
               title="Refresh notifications"
             >
               <RefreshCw size={16} className={loading ? "animate-spin text-purple-400" : ""} />
-            </button>
-
-            <button
-              onClick={markAllAsRead}
-              disabled={markingAll || unreadCount === 0}
-              className={`text-xs flex items-center gap-2 px-3.5 py-2 rounded-xl font-semibold transition-all border-none ${
-                unreadCount === 0
-                  ? "bg-zinc-900 text-zinc-600 cursor-not-allowed opacity-50"
-                  : "bg-purple-600 hover:bg-purple-500 text-white shadow-lg shadow-purple-950/50 cursor-pointer"
-              }`}
-            >
-              {markingAll ? (
-                <Loader2 size={14} className="animate-spin" />
-              ) : (
-                <CheckCheck size={15} />
-              )}
-              <span>Mark all read</span>
             </button>
           </div>
         </div>

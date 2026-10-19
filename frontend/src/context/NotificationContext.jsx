@@ -1,17 +1,14 @@
 import { createContext, useContext, useState, useEffect, useCallback, useRef } from "react";
 import api from "../services/api";
 import { useAuth } from "./AuthContext";
-import { useToast } from "./ToastContext";
 
 const NotificationContext = createContext(null);
 
 export const NotificationProvider = ({ children }) => {
   const { user } = useAuth();
-  const toast = useToast();
   const [notifications, setNotifications] = useState([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [loading, setLoading] = useState(false);
-  const [markingAll, setMarkingAll] = useState(false);
   const isFetchingRef = useRef(false);
 
   const fetchNotifications = useCallback(async (showLoader = false) => {
@@ -55,27 +52,6 @@ export const NotificationProvider = ({ children }) => {
     return () => clearInterval(interval);
   }, [user, fetchNotifications]);
 
-  const markAllAsRead = useCallback(async () => {
-    if (!user || unreadCount === 0 || markingAll) return;
-    setMarkingAll(true);
-
-    try {
-      const res = await api.put("/notifications/read-all");
-      // Update local state only after server confirmation
-      setNotifications(prev => prev.map(n => ({ ...n, is_read: 1 })));
-      setUnreadCount(0);
-      toast.success(res.data?.message || "All notifications marked as read");
-      return true;
-    } catch (err) {
-      console.error("Failed to mark all as read:", err);
-      toast.error(err.response?.data?.message || "Failed to mark all as read");
-      // Retain the unread state on failure
-      return false;
-    } finally {
-      setMarkingAll(false);
-    }
-  }, [user, unreadCount, markingAll, toast]);
-
   const markAsRead = useCallback(async (notificationId) => {
     if (!user) return;
     try {
@@ -95,9 +71,7 @@ export const NotificationProvider = ({ children }) => {
         notifications,
         unreadCount,
         loading,
-        markingAll,
         fetchNotifications,
-        markAllAsRead,
         markAsRead
       }}
     >

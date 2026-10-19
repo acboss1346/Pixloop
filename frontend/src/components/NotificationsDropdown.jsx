@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { Bell, CheckCheck, Heart, MessageSquare, UserPlus, Users, Loader2, ArrowRight } from "lucide-react";
+import { Bell, Heart, MessageSquare, UserPlus, Users, Loader2, ArrowRight } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { useNotifications } from "../context/NotificationContext";
 import { parseSafeDate } from "../utils/date";
@@ -14,9 +14,7 @@ export const NotificationsDropdown = () => {
     notifications,
     unreadCount,
     loading,
-    markingAll,
     fetchNotifications,
-    markAllAsRead,
     markAsRead
   } = useNotifications();
 
@@ -127,24 +125,6 @@ export const NotificationsDropdown = () => {
                 </span>
               )}
             </div>
-
-            <button
-              onClick={markAllAsRead}
-              disabled={markingAll || unreadCount === 0}
-              className={`text-xs flex items-center gap-1.5 transition-colors border-none bg-transparent font-medium py-1 px-2 rounded-lg ${
-                unreadCount === 0
-                  ? "text-zinc-600 cursor-not-allowed opacity-50"
-                  : "text-purple-400 hover:text-purple-300 hover:bg-purple-950/30 cursor-pointer"
-              }`}
-              title={unreadCount === 0 ? "No unread notifications" : "Mark all as read"}
-            >
-              {markingAll ? (
-                <Loader2 size={13} className="animate-spin text-purple-400" />
-              ) : (
-                <CheckCheck size={14} />
-              )}
-              <span>Mark all read</span>
-            </button>
           </div>
           
           {/* Scrollable Notifications List */}
