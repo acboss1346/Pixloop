@@ -5,16 +5,19 @@
 .home-container {
   display: grid;
   grid-template-columns: 1fr;
-  max-width: 935px;
+  max-width: 980px;
+  width: 100%;
   margin: 0 auto;
-  padding: 16px 0;
-  gap: 32px;
+  padding: 16px;
+  gap: 28px;
+  box-sizing: border-box;
 }
 
-@media (min-width: 1000px) {
+@media (min-width: 1024px) {
   .home-container {
-    grid-template-columns: minmax(0, 600px) 290px;
-    padding: 30px 0;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    padding: 24px 16px;
+    gap: 36px;
   }
 }
 
@@ -24,25 +27,28 @@
   flex-direction: column;
   gap: 20px;
   width: 100%;
+  min-width: 0;
 }
 
 .posts-feed {
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+  width: 100%;
 }
 
 /* Suggested Right Sidebar */
 .home-sidebar-right {
   display: none;
   flex-direction: column;
-  gap: 24px;
+  gap: 20px;
   position: sticky;
-  top: 30px;
+  top: 24px;
   height: fit-content;
+  width: 320px;
 }
 
-@media (min-width: 1000px) {
+@media (min-width: 1024px) {
   .home-sidebar-right {
     display: flex;
   }
@@ -183,6 +189,7 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  flex: 1;
 }
 
 .suggested-group-name {
@@ -193,26 +200,31 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  max-width: 140px;
 }
 
 .suggested-group-members {
   font-size: 11px;
   color: #71717a;
+  white-space: nowrap;
 }
 
 .btn-join-suggested {
-  background: transparent;
-  color: #3b82f6;
+  background-color: #ffffff;
+  color: #000000;
   border: none;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 11px;
+  font-weight: 700;
   cursor: pointer;
-  padding: 4px 8px;
-  transition: opacity 0.15s ease;
+  padding: 4px 12px;
+  border-radius: 9999px;
+  flex-shrink: 0;
+  transition: opacity 0.15s ease, transform 0.1s ease;
 }
 
 .btn-join-suggested:hover {
-  color: #ffffff;
+  opacity: 0.9;
+  transform: scale(1.03);
 }
 
 /* Footer Info */

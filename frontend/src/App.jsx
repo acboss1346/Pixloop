@@ -9,6 +9,7 @@ import { PostDetailPage } from "./pages/PostDetailPage";
 import { GroupsPage } from "./pages/GroupsPage";
 import { GroupDetailPage } from "./pages/GroupDetailPage";
 import { MessagesPage } from "./pages/MessagesPage";
+import { NotificationsPage } from "./pages/NotificationsPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 import { useAuth } from "./context/AuthContext";
 
@@ -39,6 +40,7 @@ function App() {
             <Route path="/groups" element={<ProtectedRoute><GroupsPage /></ProtectedRoute>} />
             <Route path="/groups/:id" element={<ProtectedRoute><GroupDetailPage /></ProtectedRoute>} />
             <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
+            <Route path="/notifications" element={<ProtectedRoute><NotificationsPage /></ProtectedRoute>} />
             
             {/* 404 Catch-all */}
             <Route path="*" element={<NotFoundPage />} />

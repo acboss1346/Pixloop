@@ -23,18 +23,19 @@ export const getNotifications = async (req, res) => {
 
     // Get unread count
     const [unreadRes] = await pool.query(
-      'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0',
+      'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND (is_read = 0 OR is_read IS NULL)',
       [userId]
     );
 
     res.json({
+      success: true,
       notifications,
       unreadCount: unreadRes[0].count,
       page,
       limit
     });
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 };
 
@@ -46,14 +47,18 @@ export const markAsRead = async (req, res) => {
     const notificationId = req.params.id;
     const userId = req.user.id;
 
-    await pool.query(
-      'UPDATE notifications SET is_read = TRUE WHERE id = ? AND user_id = ?',
+    const [result] = await pool.query(
+      'UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?',
       [notificationId, userId]
     );
 
-    res.json({ message: 'Notification marked as read' });
+    if (result.affectedRows === 0) {
+      return res.status(404).json({ success: false, message: 'Notification not found or unauthorized' });
+    }
+
+    res.json({ success: true, message: 'Notification marked as read' });
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 };
 
@@ -64,14 +69,18 @@ export const markAllAsRead = async (req, res) => {
   try {
     const userId = req.user.id;
 
-    await pool.query(
-      'UPDATE notifications SET is_read = TRUE WHERE user_id = ? AND is_read = FALSE',
+    const [result] = await pool.query(
+      'UPDATE notifications SET is_read = 1 WHERE user_id = ? AND (is_read = 0 OR is_read IS NULL)',
       [userId]
     );
 
-    res.json({ message: 'All notifications marked as read' });
+    res.json({ 
+      success: true, 
+      message: 'All notifications marked as read',
+      updatedCount: result.affectedRows
+    });
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 };
 
@@ -83,12 +92,12 @@ export const getUnreadCount = async (req, res) => {
     const userId = req.user.id;
 
     const [result] = await pool.query(
-      'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND is_read = 0',
+      'SELECT COUNT(*) as count FROM notifications WHERE user_id = ? AND (is_read = 0 OR is_read IS NULL)',
       [userId]
     );
 
-    res.json({ count: result[0].count });
+    res.json({ success: true, count: result[0].count });
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 };

@@ -65,6 +65,12 @@ export const joinCommunity = async (req, res) => {
     const { id } = req.params;
     const userId = req.user.id;
 
+    // Check if community exists
+    const [community] = await pool.query('SELECT * FROM communities WHERE id = ?', [id]);
+    if (community.length === 0) {
+      return res.status(404).json({ success: false, message: 'Community not found' });
+    }
+
     // Check if already a member
     const [existing] = await pool.query(
       'SELECT * FROM community_members WHERE user_id = ? AND community_id = ?',
@@ -72,7 +78,7 @@ export const joinCommunity = async (req, res) => {
     );
 
     if (existing.length > 0) {
-      return res.status(400).json({ success: false, message: 'Already a member' });
+      return res.status(400).json({ success: false, message: 'Already a member of this community' });
     }
 
     await pool.query(
@@ -80,7 +86,12 @@ export const joinCommunity = async (req, res) => {
       [userId, id]
     );
 
-    res.json({ success: true, message: 'Joined community successfully' });
+    const [countResult] = await pool.query(
+      'SELECT COUNT(DISTINCT user_id) as count FROM community_members WHERE community_id = ?',
+      [id]
+    );
+
+    res.json({ success: true, message: 'Joined community successfully', memberCount: countResult[0].count });
   } catch (error) {
     console.error('joinCommunity ERROR:', error.message);
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
@@ -94,6 +105,15 @@ export const leaveCommunity = async (req, res) => {
   try {
     const { id } = req.params;
     const userId = req.user.id;
+
+    const [community] = await pool.query('SELECT * FROM communities WHERE id = ?', [id]);
+    if (community.length === 0) {
+      return res.status(404).json({ success: false, message: 'Community not found' });
+    }
+
+    if (community[0].creator_id === userId) {
+      return res.status(400).json({ success: false, message: 'As the community creator, you cannot leave. You can delete the community instead.' });
+    }
 
     // Check if member
     const [existing] = await pool.query(
@@ -110,7 +130,12 @@ export const leaveCommunity = async (req, res) => {
       [userId, id]
     );
 
-    res.json({ success: true, message: 'Left community successfully' });
+    const [countResult] = await pool.query(
+      'SELECT COUNT(DISTINCT user_id) as count FROM community_members WHERE community_id = ?',
+      [id]
+    );
+
+    res.json({ success: true, message: 'Left community successfully', memberCount: countResult[0].count });
   } catch (error) {
     console.error('leaveCommunity ERROR:', error.message);
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
@@ -358,15 +383,30 @@ export const sendCommunityMessage = async (req, res) => {
 export const getCommunityMembers = async (req, res) => {
   try {
     const { id } = req.params;
+
+    // Check if community exists
+    const [community] = await pool.query('SELECT id, creator_id FROM communities WHERE id = ?', [id]);
+    if (community.length === 0) {
+      return res.status(404).json({ success: false, message: 'Community not found' });
+    }
+
+    const creatorId = community[0].creator_id;
+
     const [members] = await pool.query(
-      `SELECT u.id, u.username, u.profile_pic, u.bio, cm.id as membership_id
+      `SELECT u.id, u.username, u.profile_pic, u.bio, cm.id as membership_id, cm.joined_at,
+              (u.id = ?) as is_creator
        FROM community_members cm
        JOIN users u ON cm.user_id = u.id
        WHERE cm.community_id = ?
-       ORDER BY u.username ASC`,
-      [id]
+       ORDER BY (u.id = ?) DESC, cm.joined_at ASC, u.username ASC`,
+      [creatorId, id, creatorId]
     );
-    res.json({ success: true, data: members });
+
+    res.json({ 
+      success: true, 
+      data: members, 
+      count: members.length 
+    });
   } catch (error) {
     console.error('getCommunityMembers ERROR:', error.message);
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });

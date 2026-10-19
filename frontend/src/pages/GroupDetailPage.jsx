@@ -1,8 +1,8 @@
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import api from "../services/api";
 import { PostItem } from "../components/PostItem";
-import { ArrowLeft, Users, Trash2, Edit2, Image as ImageIcon, Upload, X, Loader2, MessageSquare, Send } from "lucide-react";
+import { ArrowLeft, Users, Trash2, Edit2, Image as ImageIcon, Upload, X, Loader2, MessageSquare, Send, AlertCircle, RefreshCw, Calendar, Crown } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useToast } from "../context/ToastContext";
 
@@ -31,6 +31,7 @@ export const GroupDetailPage = () => {
   // Community Members state
   const [members, setMembers] = useState([]);
   const [loadingMembers, setLoadingMembers] = useState(false);
+  const [membersError, setMembersError] = useState("");
 
   // Community Chat state
   const [chatMessages, setChatMessages] = useState([]);
@@ -47,6 +48,25 @@ export const GroupDetailPage = () => {
   const [editLogoPreview, setEditLogoPreview] = useState("");
   const [savingCommunity, setSavingCommunity] = useState(false);
   const editLogoInputRef = useRef(null);
+
+  const fetchMembers = useCallback(async () => {
+    setLoadingMembers(true);
+    setMembersError("");
+    try {
+      const res = await api.get(`/communities/${id}/members`);
+      const list = res.data?.data || [];
+      setMembers(list);
+      // Synchronize community memberCount with real count
+      if (res.data?.count !== undefined) {
+        setCommunity(prev => prev ? { ...prev, memberCount: res.data.count } : prev);
+      }
+    } catch (err) {
+      console.error("Failed to fetch community members", err);
+      setMembersError(err.response?.data?.message || "Failed to load community members. Please check your connection and retry.");
+    } finally {
+      setLoadingMembers(false);
+    }
+  }, [id]);
 
   useEffect(() => {
     fetchGroupData();
@@ -80,22 +100,10 @@ export const GroupDetailPage = () => {
 
   // Fetch Community Members on tab switch
   useEffect(() => {
-    if (activeTab !== "members") return;
-
-    const fetchMembers = async () => {
-      setLoadingMembers(true);
-      try {
-        const res = await api.get(`/communities/${id}/members`);
-        setMembers(res.data.data || []);
-      } catch (err) {
-        console.error("Failed to fetch community members", err);
-      } finally {
-        setLoadingMembers(false);
-      }
-    };
-
-    fetchMembers();
-  }, [id, activeTab]);
+    if (activeTab === "members") {
+      fetchMembers();
+    }
+  }, [id, activeTab, fetchMembers]);
 
   // Auto-scroll chat to bottom
   useEffect(() => {
@@ -125,11 +133,32 @@ export const GroupDetailPage = () => {
     try {
       const res = await api.post(`/communities/${id}/join`);
       if (res.data.success) {
-        setCommunity({ 
-          ...community, 
+        const newCount = res.data.memberCount !== undefined 
+          ? res.data.memberCount 
+          : parseInt(community?.memberCount || 0) + 1;
+
+        setCommunity(prev => ({ 
+          ...prev, 
           is_member: true, 
-          memberCount: parseInt(community.memberCount) + 1 
+          memberCount: newCount 
+        }));
+
+        // Synchronize local members list
+        setMembers(prev => {
+          if (prev.some(m => m.id === currentUserId)) return prev;
+          return [
+            ...prev,
+            {
+              id: currentUserId,
+              username: user?.username || "You",
+              profile_pic: user?.profile_pic || null,
+              bio: user?.bio || null,
+              joined_at: new Date().toISOString(),
+              is_creator: currentUserId === community?.creator_id ? 1 : 0
+            }
+          ];
         });
+
         toast.success("Joined community successfully!");
       }
     } catch (err) {
@@ -139,21 +168,33 @@ export const GroupDetailPage = () => {
   };
 
   const handleLeaveGroup = async () => {
-    if (community.creator_id === currentUserId) {
+    if (community?.creator_id === currentUserId) {
       toast.warning("As the creator of the community, you cannot leave it. You can delete it using the trash icon instead.");
       return;
     }
-    if (!window.confirm(`Are you sure you want to leave ${community.name}?`)) return;
+    if (!window.confirm(`Are you sure you want to leave ${community?.name}?`)) return;
 
     try {
       const res = await api.post(`/communities/${id}/leave`);
       if (res.data.success) {
-        setCommunity({ 
-          ...community, 
+        const newCount = res.data.memberCount !== undefined 
+          ? res.data.memberCount 
+          : Math.max(0, parseInt(community?.memberCount || 1) - 1);
+
+        setCommunity(prev => ({ 
+          ...prev, 
           is_member: false, 
-          memberCount: Math.max(0, parseInt(community.memberCount) - 1) 
-        });
-        toast.info(`You left ${community.name}`);
+          memberCount: newCount 
+        }));
+
+        // Synchronize local members list
+        setMembers(prev => prev.filter(m => m.id !== currentUserId));
+
+        if (activeTab === "chat") {
+          setActiveTab("feed");
+        }
+
+        toast.info(`You left ${community?.name}`);
       }
     } catch (err) {
       console.error("Failed to leave group", err);
@@ -335,36 +376,39 @@ export const GroupDetailPage = () => {
       </button>
 
       {/* Group Header */}
-      <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-6 md:p-8 mb-8 relative overflow-hidden">
+      <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-5 sm:p-6 mb-6 relative overflow-hidden shadow-xl">
         {/* Glow */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-purple-600/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none"></div>
         
-        <div className="flex flex-col sm:flex-row gap-6 items-start relative z-10">
-          <div className="w-20 h-20 sm:w-24 sm:h-24 rounded-2xl overflow-hidden bg-zinc-900 flex items-center justify-center flex-shrink-0 border border-zinc-800 shadow-xl">
+        <div className="flex flex-col sm:flex-row gap-5 items-start relative z-10">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden bg-zinc-900 flex items-center justify-center flex-shrink-0 border border-zinc-800 shadow-md">
             {community.logo_url ? (
               <img src={community.logo_url} alt={community.name} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-3xl font-bold text-white">
+              <span className="text-2xl sm:text-3xl font-extrabold text-white">
                 {community.name.charAt(0).toUpperCase()}
               </span>
             )}
           </div>
           
-          <div className="flex-grow w-full">
-            <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 w-full">
+          <div className="flex-grow w-full min-w-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 w-full mb-2">
               <div>
-                <h1 className="text-2xl sm:text-3xl font-extrabold text-white mb-2 tracking-tight">{community.name}</h1>
-                <div className="flex items-center gap-4 text-xs text-zinc-500 mb-4 font-semibold">
-                  <div className="flex items-center gap-1">
-                    <Users size={14} />
-                    <span>{community.memberCount} members</span>
+                <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight m-0">{community.name}</h1>
+                <div className="flex items-center gap-3 text-xs text-zinc-400 mt-1 font-medium flex-wrap">
+                  <div className="flex items-center gap-1.5 text-zinc-300">
+                    <Users size={14} className="text-purple-400" />
+                    <span className="font-semibold">{community.memberCount} members</span>
                   </div>
                   <span>•</span>
-                  <span>Created {new Date(community.created_at).toLocaleDateString()}</span>
+                  <div className="flex items-center gap-1 text-zinc-500">
+                    <Calendar size={13} />
+                    <span>Created {new Date(community.created_at).toLocaleDateString()}</span>
+                  </div>
                 </div>
               </div>
               
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 flex-shrink-0">
                 {community.creator_id === currentUserId && (
                   <>
                     <button 
@@ -374,17 +418,17 @@ export const GroupDetailPage = () => {
                         setEditLogoPreview(community.logo_url || "");
                         setShowEditModal(true);
                       }}
-                      className="p-2 text-zinc-400 hover:bg-zinc-900 hover:text-white rounded-lg transition-colors border border-zinc-800 bg-transparent cursor-pointer"
+                      className="p-2 text-zinc-400 hover:bg-zinc-900 hover:text-white rounded-xl transition-colors border border-zinc-800 bg-transparent cursor-pointer"
                       title="Edit Community"
                     >
-                      <Edit2 size={16} />
+                      <Edit2 size={15} />
                     </button>
                     <button 
                       onClick={handleDeleteGroup}
-                      className="p-2 text-red-500 hover:bg-red-950/20 hover:text-red-400 rounded-lg transition-colors border border-red-900/30 bg-transparent cursor-pointer"
+                      className="p-2 text-rose-500 hover:bg-rose-950/20 hover:text-rose-400 rounded-xl transition-colors border border-rose-900/30 bg-transparent cursor-pointer"
                       title="Delete Community"
                     >
-                      <Trash2 size={16} />
+                      <Trash2 size={15} />
                     </button>
                   </>
                 )}
@@ -392,15 +436,15 @@ export const GroupDetailPage = () => {
                 {community.is_member ? (
                   <button 
                     onClick={handleLeaveGroup}
-                    className="px-5 py-2 bg-zinc-900 text-zinc-400 hover:text-red-400 hover:bg-red-950/20 hover:border-red-900/30 rounded-full font-semibold border border-zinc-800 transition-all text-xs cursor-pointer"
-                    title="Click to leave group"
+                    className="px-4 py-2 bg-zinc-900 text-zinc-300 hover:text-rose-400 hover:bg-rose-950/20 hover:border-rose-900/40 rounded-xl font-semibold border border-zinc-800 transition-all text-xs cursor-pointer"
+                    title="Click to leave community"
                   >
                     Joined
                   </button>
                 ) : (
                   <button 
                     onClick={handleJoinGroup}
-                    className="px-5 py-2 bg-white text-black hover:opacity-90 rounded-full font-bold transition-all text-xs cursor-pointer"
+                    className="px-5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white rounded-xl font-bold transition-all text-xs cursor-pointer shadow-lg shadow-purple-950/50"
                   >
                     Join Group
                   </button>
@@ -408,7 +452,11 @@ export const GroupDetailPage = () => {
               </div>
             </div>
             
-            <p className="text-zinc-300 text-sm leading-relaxed max-w-2xl">{community.description || "No description provided."}</p>
+            {community.description && (
+              <p className="text-zinc-300 text-xs sm:text-sm leading-relaxed max-w-2xl m-0 mt-2">
+                {community.description}
+              </p>
+            )}
           </div>
         </div>
       </div>
@@ -650,53 +698,99 @@ export const GroupDetailPage = () => {
         </div>
       ) : (
         /* Members Tab */
-        <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-white tracking-tight">Community Members</h2>
-            <span className="text-xs text-zinc-400 font-semibold">{members.length} members</span>
+        <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-5 sm:p-6 shadow-xl">
+          <div className="flex items-center justify-between mb-5 pb-3 border-b border-zinc-900">
+            <div className="flex items-center gap-2.5">
+              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight m-0">Community Members</h2>
+              <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                {members.length > 0 ? members.length : (community.memberCount || 0)}
+              </span>
+            </div>
+            <button 
+              onClick={fetchMembers}
+              disabled={loadingMembers}
+              className="text-xs text-zinc-400 hover:text-white flex items-center gap-1.5 transition-colors cursor-pointer bg-transparent border-none py-1 px-2 rounded-lg hover:bg-zinc-900"
+              title="Refresh member list"
+            >
+              <RefreshCw size={13} className={loadingMembers ? "animate-spin text-purple-400" : ""} />
+              <span>Refresh</span>
+            </button>
           </div>
 
-          {loadingMembers ? (
-            <div className="flex justify-center items-center py-16">
-              <Loader2 size={24} className="animate-spin text-purple-500" />
+          {loadingMembers && members.length === 0 ? (
+            <div className="flex flex-col justify-center items-center py-16 text-zinc-500 gap-2">
+              <Loader2 size={26} className="animate-spin text-purple-500" />
+              <span className="text-xs">Loading community members...</span>
+            </div>
+          ) : membersError ? (
+            <div className="flex flex-col items-center justify-center py-12 px-4 text-center bg-zinc-900/30 rounded-xl border border-zinc-900">
+              <AlertCircle size={32} className="text-rose-400 mb-2" />
+              <p className="text-xs text-zinc-300 font-semibold mb-1">Failed to load members</p>
+              <p className="text-[11px] text-zinc-500 max-w-sm mb-4 leading-relaxed">{membersError}</p>
+              <button
+                onClick={fetchMembers}
+                className="px-4 py-2 rounded-xl text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white transition-colors cursor-pointer border-none flex items-center gap-1.5"
+              >
+                <RefreshCw size={12} />
+                <span>Retry</span>
+              </button>
             </div>
           ) : members.length === 0 ? (
-            <p className="text-xs text-zinc-500 text-center py-12">No members found.</p>
+            <div className="text-center py-14 px-4 bg-zinc-900/20 rounded-xl border border-zinc-900">
+              <Users size={36} className="mx-auto mb-3 opacity-30 text-purple-400" />
+              <h3 className="text-sm font-bold text-white mb-1">No members found yet</h3>
+              <p className="text-xs text-zinc-500 max-w-xs mx-auto mb-4">
+                Be the first to join this community and connect with other members!
+              </p>
+              {!community.is_member && (
+                <button
+                  onClick={handleJoinGroup}
+                  className="px-5 py-2 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl text-xs font-bold transition-all cursor-pointer border-none shadow-lg shadow-purple-950/50"
+                >
+                  Join Community
+                </button>
+              )}
+            </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {members.map((member) => {
-                const isCreator = member.id === community.creator_id;
+                const isCreator = member.id === community.creator_id || member.is_creator === 1 || member.is_creator === true;
                 return (
                   <div 
                     key={member.id}
-                    className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-850 hover:border-zinc-800 transition-colors"
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-900/50 border border-zinc-850 hover:border-zinc-800 transition-all group"
                   >
-                    <div className="flex items-center gap-3 min-w-0">
-                      <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-xs text-white flex-shrink-0">
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-zinc-700/80 flex items-center justify-center font-bold text-xs text-white flex-shrink-0 group-hover:border-purple-500 transition-colors">
                         {member.profile_pic ? (
                           <img src={member.profile_pic} alt={member.username} className="w-full h-full object-cover" />
                         ) : (
                           member.username?.charAt(0).toUpperCase()
                         )}
                       </div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm text-white truncate">{member.username}</span>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-xs sm:text-sm text-white truncate group-hover:text-purple-300 transition-colors">
+                            {member.username}
+                          </span>
                           {isCreator && (
-                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center gap-1">
+                              <Crown size={10} className="text-purple-400" />
                               Creator
                             </span>
                           )}
                         </div>
-                        {member.bio && (
+                        {member.bio ? (
                           <p className="text-[11px] text-zinc-400 truncate max-w-xs m-0 mt-0.5">{member.bio}</p>
+                        ) : (
+                          <p className="text-[10px] text-zinc-600 italic m-0 mt-0.5">PixLoop Member</p>
                         )}
                       </div>
                     </div>
 
                     <button
                       onClick={() => navigate(`/profile/${member.username}`)}
-                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white transition-colors cursor-pointer border-none flex-shrink-0"
+                      className="ml-2 px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white transition-colors cursor-pointer border-none flex-shrink-0"
                     >
                       View
                     </button>

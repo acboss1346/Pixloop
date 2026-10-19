@@ -23,16 +23,34 @@ export const likePost = async (req, res) => {
     );
 
     const [post] = await pool.query('SELECT p.user_id, u.notifications_enabled FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?', [postId]);
+    // Prevent notifications for user's own actions
     if (post.length > 0 && post[0].user_id !== userId && post[0].notifications_enabled) {
-      await pool.query(
-        'INSERT INTO notifications (user_id, sender_id, post_id, type) VALUES (?, ?, ?, ?)',
-        [post[0].user_id, userId, postId, 'like']
+      const recipientId = post[0].user_id;
+
+      // Prevent duplicate unread like notifications
+      const [existingLikeNotif] = await pool.query(
+        `SELECT id FROM notifications 
+         WHERE user_id = ? AND sender_id = ? AND post_id = ? AND type = 'like' AND (is_read = 0 OR is_read IS NULL) 
+         LIMIT 1`,
+        [recipientId, userId, postId]
       );
+
+      if (existingLikeNotif.length > 0) {
+        await pool.query(
+          'UPDATE notifications SET created_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [existingLikeNotif[0].id]
+        );
+      } else {
+        await pool.query(
+          'INSERT INTO notifications (user_id, sender_id, post_id, type, message, is_read) VALUES (?, ?, ?, ?, ?, 0)',
+          [recipientId, userId, postId, 'like', 'liked your post.']
+        );
+      }
     }
 
-    res.json({ message: 'Post liked' });
+    res.json({ success: true, message: 'Post liked' });
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 };
 
@@ -50,7 +68,7 @@ export const unlikePost = async (req, res) => {
     );
 
     if (existingLike.length === 0) {
-      return res.status(400).json({ message: 'Post has not yet been liked' });
+      return res.status(400).json({ success: false, message: 'Post has not yet been liked' });
     }
 
     await pool.query(
@@ -58,9 +76,9 @@ export const unlikePost = async (req, res) => {
       [postId, userId]
     );
 
-    res.json({ message: 'Post unliked' });
+    res.json({ success: true, message: 'Post unliked' });
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 };
 
@@ -73,21 +91,43 @@ export const addComment = async (req, res) => {
     const userId = req.user.id;
     const { comment } = req.body;
 
-    if (!comment) {
-      return res.status(400).json({ message: 'Comment text is required' });
+    if (!comment || !comment.trim()) {
+      return res.status(400).json({ success: false, message: 'Comment text is required' });
     }
+
+    const trimmedComment = comment.trim();
 
     const [result] = await pool.query(
       'INSERT INTO comments (post_id, user_id, comment) VALUES (?, ?, ?)',
-      [postId, userId, comment]
+      [postId, userId, trimmedComment]
     );
 
     const [post] = await pool.query('SELECT p.user_id, u.notifications_enabled FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?', [postId]);
+    // Prevent notifications for user's own actions
     if (post.length > 0 && post[0].user_id !== userId && post[0].notifications_enabled) {
-      await pool.query(
-        'INSERT INTO notifications (user_id, sender_id, post_id, type) VALUES (?, ?, ?, ?)',
-        [post[0].user_id, userId, postId, 'comment']
+      const recipientId = post[0].user_id;
+      const snippet = trimmedComment.length > 50 ? trimmedComment.slice(0, 47) + '...' : trimmedComment;
+      const notifMessage = `commented: "${snippet}"`;
+
+      // Check if an unread notification from this sender on this post already exists
+      const [existingNotif] = await pool.query(
+        `SELECT id FROM notifications 
+         WHERE user_id = ? AND sender_id = ? AND post_id = ? AND type = 'comment' AND (is_read = 0 OR is_read IS NULL)
+         ORDER BY created_at DESC LIMIT 1`,
+        [recipientId, userId, postId]
       );
+
+      if (existingNotif.length > 0) {
+        await pool.query(
+          'UPDATE notifications SET message = ?, created_at = CURRENT_TIMESTAMP WHERE id = ?',
+          [notifMessage, existingNotif[0].id]
+        );
+      } else {
+        await pool.query(
+          'INSERT INTO notifications (user_id, sender_id, post_id, type, message, is_read) VALUES (?, ?, ?, ?, ?, 0)',
+          [recipientId, userId, postId, 'comment', notifMessage]
+        );
+      }
     }
 
     const [newComment] = await pool.query(
@@ -100,7 +140,7 @@ export const addComment = async (req, res) => {
 
     res.status(201).json(newComment[0]);
   } catch (error) {
-    res.status(500).json({ message: 'Server Error', error: error.message });
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 };
 
