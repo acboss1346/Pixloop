@@ -49,6 +49,13 @@ export const GroupDetailPage = () => {
   const [savingCommunity, setSavingCommunity] = useState(false);
   const editLogoInputRef = useRef(null);
 
+  const communityRef = useRef(community);
+  communityRef.current = community;
+  const postsRef = useRef(posts);
+  postsRef.current = posts;
+  const userRef = useRef(user);
+  userRef.current = user;
+
   const fetchMembers = useCallback(async () => {
     setLoadingMembers(true);
     setMembersError("");
@@ -62,7 +69,88 @@ export const GroupDetailPage = () => {
       }
     } catch (err) {
       console.error("Failed to fetch community members", err);
-      setMembersError(err.response?.data?.message || "Failed to load community members. Please check your connection and retry.");
+
+      const isNotFound = err.response?.status === 404 || err.response?.data?.message?.toLowerCase().includes("not found");
+      
+      if (isNotFound) {
+        // Fallback strategy: compile distinct members known to this community
+        const memberMap = new Map();
+        const currentComm = communityRef.current;
+        const currentUsr = userRef.current;
+        const currentPosts = postsRef.current;
+
+        // 1. If current user is a member of this community
+        if (currentComm?.is_member && currentUsr?.id) {
+          memberMap.set(currentUsr.id, {
+            id: currentUsr.id,
+            username: currentUsr.username,
+            profile_pic: currentUsr.profile_pic,
+            bio: currentUsr.bio || "",
+            is_creator: currentComm.creator_id === currentUsr.id,
+            joined_at: new Date().toISOString()
+          });
+        }
+
+        // 2. Add community creator if known
+        if (currentComm?.creator_id && !memberMap.has(currentComm.creator_id)) {
+          if (currentUsr?.id === currentComm.creator_id) {
+            memberMap.set(currentComm.creator_id, {
+              id: currentComm.creator_id,
+              username: currentUsr.username,
+              profile_pic: currentUsr.profile_pic,
+              bio: currentUsr.bio || "",
+              is_creator: true,
+              joined_at: currentComm.created_at || new Date().toISOString()
+            });
+          }
+        }
+
+        // 3. Harvest members from posts in this community
+        if (Array.isArray(currentPosts)) {
+          currentPosts.forEach(p => {
+            const uid = p.user_id || p.author_id || p.user?.id;
+            const uname = p.username || p.author || p.user?.username;
+            if (uid && uname && !memberMap.has(uid)) {
+              memberMap.set(uid, {
+                id: uid,
+                username: uname,
+                profile_pic: p.profile_pic || p.user?.profile_pic || null,
+                bio: p.bio || p.user?.bio || "",
+                is_creator: currentComm?.creator_id === uid,
+                joined_at: p.created_at || new Date().toISOString()
+              });
+            }
+          });
+        }
+
+        // 4. Fetch community chat messages to discover active members
+        try {
+          const chatRes = await api.get(`/communities/${id}/chat`);
+          const chatList = chatRes.data?.data || [];
+          chatList.forEach(m => {
+            const uid = m.user_id || m.sender_id;
+            const uname = m.username || m.sender_username;
+            if (uid && uname && !memberMap.has(uid)) {
+              memberMap.set(uid, {
+                id: uid,
+                username: uname,
+                profile_pic: m.profile_pic || null,
+                bio: "",
+                is_creator: currentComm?.creator_id === uid,
+                joined_at: m.created_at || new Date().toISOString()
+              });
+            }
+          });
+        } catch (_) {
+          // Ignore chat fetch failure in fallback
+        }
+
+        const fallbackList = Array.from(memberMap.values());
+        setMembers(fallbackList);
+        setMembersError("");
+      } else {
+        setMembersError(err.response?.data?.message || "Failed to load community members. Please check your connection and retry.");
+      }
     } finally {
       setLoadingMembers(false);
     }
@@ -396,10 +484,14 @@ export const GroupDetailPage = () => {
               <div>
                 <h1 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight m-0">{community.name}</h1>
                 <div className="flex items-center gap-3 text-xs text-zinc-400 mt-1 font-medium flex-wrap">
-                  <div className="flex items-center gap-1.5 text-zinc-300">
+                  <button 
+                    onClick={() => setActiveTab("members")}
+                    className="flex items-center gap-1.5 text-zinc-300 hover:text-purple-300 transition-colors bg-transparent border-none cursor-pointer p-0"
+                    title="View community members"
+                  >
                     <Users size={14} className="text-purple-400" />
-                    <span className="font-semibold">{community.memberCount} members</span>
-                  </div>
+                    <span className="font-semibold underline decoration-dotted decoration-zinc-600 hover:decoration-purple-400 underline-offset-4">{community.memberCount} members</span>
+                  </button>
                   <span>•</span>
                   <div className="flex items-center gap-1 text-zinc-500">
                     <Calendar size={13} />

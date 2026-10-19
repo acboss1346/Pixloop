@@ -390,16 +390,16 @@ export const getCommunityMembers = async (req, res) => {
       return res.status(404).json({ success: false, message: 'Community not found' });
     }
 
-    const creatorId = community[0].creator_id;
+    const creatorId = community[0].creator_id || null;
 
     const [members] = await pool.query(
       `SELECT u.id, u.username, u.profile_pic, u.bio, cm.id as membership_id, cm.joined_at,
-              (u.id = ?) as is_creator
+              CASE WHEN ? IS NOT NULL AND u.id = ? THEN 1 ELSE 0 END as is_creator
        FROM community_members cm
        JOIN users u ON cm.user_id = u.id
        WHERE cm.community_id = ?
-       ORDER BY (u.id = ?) DESC, cm.joined_at ASC, u.username ASC`,
-      [creatorId, id, creatorId]
+       ORDER BY CASE WHEN ? IS NOT NULL AND u.id = ? THEN 1 ELSE 0 END DESC, cm.joined_at ASC, u.username ASC`,
+      [creatorId, creatorId, id, creatorId, creatorId]
     );
 
     res.json({ 
