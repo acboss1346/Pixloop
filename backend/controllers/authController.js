@@ -87,7 +87,7 @@ export const loginUser = async (req, res) => {
 // @access  Private
 export const getMe = async (req, res) => {
   try {
-    const [users] = await pool.query('SELECT id, username, email, profile_pic, notifications_enabled FROM users WHERE id = ?', [req.user.id]);
+    const [users] = await pool.query('SELECT id, username, email, profile_pic, cover_pic, bio, notifications_enabled FROM users WHERE id = ?', [req.user.id]);
     res.status(200).json(users[0]);
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });
@@ -112,11 +112,21 @@ export const toggleNotifications = async (req, res) => {
 // @access  Private
 export const updateProfile = async (req, res) => {
   try {
-    const { username, email } = req.body;
+    const { username, email, bio } = req.body;
     const userId = req.user.id;
 
     if (!username || !email) {
       return res.status(400).json({ message: 'Username and email are required' });
+    }
+
+    // Validate username length
+    if (username.length < 2 || username.length > 30) {
+      return res.status(400).json({ message: 'Username must be 2-30 characters' });
+    }
+
+    // Validate bio length
+    if (bio && bio.length > 300) {
+      return res.status(400).json({ message: 'Bio must be under 300 characters' });
     }
 
     const [existing] = await pool.query(
@@ -129,12 +139,12 @@ export const updateProfile = async (req, res) => {
     }
 
     await pool.query(
-      'UPDATE users SET username = ?, email = ? WHERE id = ?',
-      [username, email, userId]
+      'UPDATE users SET username = ?, email = ?, bio = ? WHERE id = ?',
+      [username, email, bio || null, userId]
     );
 
     const [updated] = await pool.query(
-      'SELECT id, username, email, profile_pic, notifications_enabled FROM users WHERE id = ?',
+      'SELECT id, username, email, profile_pic, cover_pic, bio, notifications_enabled FROM users WHERE id = ?',
       [userId]
     );
 
@@ -171,7 +181,39 @@ export const updateProfilePic = async (req, res) => {
     );
 
     const [updated] = await pool.query(
-      'SELECT id, username, email, profile_pic, notifications_enabled FROM users WHERE id = ?',
+      'SELECT id, username, email, profile_pic, cover_pic, bio, notifications_enabled FROM users WHERE id = ?',
+      [userId]
+    );
+
+    res.json(updated[0]);
+  } catch (error) {
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
+// @desc    Update user cover picture
+// @route   PUT /api/auth/cover-pic
+// @access  Private
+export const updateCoverPic = async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'Please select an image file' });
+    }
+
+    const uploadResult = await uploadOnCloudinary(req.file.path);
+    if (!uploadResult) {
+      return res.status(500).json({ message: 'Failed to upload image' });
+    }
+
+    await pool.query(
+      'UPDATE users SET cover_pic = ? WHERE id = ?',
+      [uploadResult.secure_url, userId]
+    );
+
+    const [updated] = await pool.query(
+      'SELECT id, username, email, profile_pic, cover_pic, bio, notifications_enabled FROM users WHERE id = ?',
       [userId]
     );
 
@@ -197,6 +239,51 @@ export const searchUsers = async (req, res) => {
   }
 };
 
+// @desc    Global search across users, communities, and posts
+// @route   GET /api/auth/search-all
+// @access  Private
+export const searchGlobal = async (req, res) => {
+  try {
+    const query = (req.query.query || '').trim();
+    if (!query) {
+      return res.json({ users: [], communities: [], posts: [] });
+    }
+
+    const searchPattern = `%${query}%`;
+
+    const [users] = await pool.query(
+      'SELECT id, username, profile_pic, bio FROM users WHERE username LIKE ? LIMIT 8',
+      [searchPattern]
+    );
+
+    const [communities] = await pool.query(
+      `SELECT c.id, c.name, c.icon, c.logo_url, c.description,
+       COUNT(DISTINCT cm.user_id) as memberCount
+       FROM communities c
+       LEFT JOIN community_members cm ON c.id = cm.community_id
+       WHERE c.name LIKE ? OR c.description LIKE ?
+       GROUP BY c.id
+       LIMIT 8`,
+      [searchPattern, searchPattern]
+    );
+
+    const [posts] = await pool.query(
+      `SELECT p.id, p.caption, p.image_url, u.username, u.profile_pic
+       FROM posts p
+       JOIN users u ON p.user_id = u.id
+       WHERE p.caption LIKE ?
+       ORDER BY p.created_at DESC
+       LIMIT 8`,
+      [searchPattern]
+    );
+
+    res.json({ users, communities, posts });
+  } catch (error) {
+    console.error('searchGlobal ERROR:', error.message);
+    res.status(500).json({ message: 'Server Error', error: error.message });
+  }
+};
+
 // @desc    Get user profile by username
 // @route   GET /api/auth/user/:username
 // @access  Private
@@ -204,7 +291,7 @@ export const getUserProfile = async (req, res) => {
   try {
     const { username } = req.params;
     const [users] = await pool.query(
-      'SELECT id, username, email, profile_pic FROM users WHERE username = ?',
+      'SELECT id, username, email, profile_pic, cover_pic, bio FROM users WHERE username = ?',
       [username]
     );
 
@@ -226,9 +313,24 @@ export const getUserProfile = async (req, res) => {
       }
     }
 
+    // Get post count
+    const [postCount] = await pool.query(
+      'SELECT COUNT(*) as count FROM posts WHERE user_id = ?',
+      [targetUser.id]
+    );
+
+    // Get friends count
+    const [friendsCount] = await pool.query(
+      `SELECT COUNT(*) as count FROM friend_requests 
+       WHERE status = 'accepted' AND (sender_id = ? OR receiver_id = ?)`,
+      [targetUser.id, targetUser.id]
+    );
+
     res.json({
       ...targetUser,
-      friendship
+      friendship,
+      postCount: postCount[0].count,
+      friendsCount: friendsCount[0].count
     });
   } catch (error) {
     res.status(500).json({ message: 'Server Error', error: error.message });

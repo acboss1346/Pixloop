@@ -9,7 +9,8 @@ import {
   deleteCommunity, 
   updateCommunity,
   getCommunityMessages,
-  sendCommunityMessage
+  sendCommunityMessage,
+  getCommunityMembers
 } from '../controllers/communityController.js';
 import { protect } from '../middleware/auth.js';
 import { upload } from '../middleware/upload.js';
@@ -21,6 +22,7 @@ router.get('/', protect, getCommunities);
 router.get('/trending/hashtags', getTrendingHashtags);
 router.post('/', protect, upload.single('logo'), createCommunity);
 router.get('/:id', protect, getCommunityById);
+router.get('/:id/members', protect, getCommunityMembers);
 router.post('/:id/join', protect, joinCommunity);
 router.post('/:id/leave', protect, leaveCommunity);
 router.delete('/:id', protect, deleteCommunity);

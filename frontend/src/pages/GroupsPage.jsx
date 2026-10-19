@@ -1,12 +1,14 @@
 import { useEffect, useState, useRef } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/api";
+import { useToast } from "../context/ToastContext";
 import { Search, Users, Plus, X, Upload, Loader2 } from "lucide-react";
 
 export const GroupsPage = () => {
   const [communities, setCommunities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const toast = useToast();
   
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const [newGroupName, setNewGroupName] = useState("");
@@ -64,10 +66,11 @@ export const GroupsPage = () => {
         setNewGroupDesc("");
         setNewGroupLogo(null);
         setLogoPreview("");
+        toast.success("Community created successfully!");
       }
     } catch (err) {
       console.error("Failed to create group", err);
-      alert(err.response?.data?.message || "Failed to create group");
+      toast.error(err.response?.data?.message || "Failed to create group");
     } finally {
       setCreating(false);
     }
@@ -81,10 +84,11 @@ export const GroupsPage = () => {
         setCommunities(communities.map(c => 
           c.id === communityId ? { ...c, is_member: true, memberCount: parseInt(c.memberCount) + 1 } : c
         ));
+        toast.success("Joined community!");
       }
     } catch (err) {
       console.error("Failed to join group", err);
-      alert(err.response?.data?.message || "Failed to join group");
+      toast.error(err.response?.data?.message || "Failed to join group");
     }
   };
 

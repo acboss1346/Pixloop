@@ -28,8 +28,10 @@ import communityRoutes from './routes/communityRoutes.js';
 import notificationRoutes from './routes/notificationRoutes.js';
 import friendRoutes from './routes/friendRoutes.js';
 import chatRoutes from './routes/chatRoutes.js';
+import { authRateLimiter, apiRateLimiter } from './middleware/rateLimiter.js';
 
-app.use('/api/auth', authRoutes);
+app.use('/api', apiRateLimiter);
+app.use('/api/auth', authRateLimiter, authRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/communities', communityRoutes);
 app.use('/api/notifications', notificationRoutes);

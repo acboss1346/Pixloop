@@ -4,12 +4,15 @@ import api from "../services/api";
 import { PostItem } from "../components/PostItem";
 import { ArrowLeft, Users, Trash2, Edit2, Image as ImageIcon, Upload, X, Loader2, MessageSquare, Send } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
+import { useToast } from "../context/ToastContext";
 
 export const GroupDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  
+  const toast = useToast();
+  const currentUserId = user?.id || user?._id;
+
   const [community, setCommunity] = useState(null);
   const [posts, setPosts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -22,8 +25,12 @@ export const GroupDetailPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const fileInputRef = useRef(null);
 
-  // Tabs state: 'feed' vs 'chat'
+  // Tabs state: 'feed' vs 'chat' vs 'members'
   const [activeTab, setActiveTab] = useState("feed");
+
+  // Community Members state
+  const [members, setMembers] = useState([]);
+  const [loadingMembers, setLoadingMembers] = useState(false);
 
   // Community Chat state
   const [chatMessages, setChatMessages] = useState([]);
@@ -71,6 +78,25 @@ export const GroupDetailPage = () => {
     return () => clearInterval(timer);
   }, [id, activeTab, community]);
 
+  // Fetch Community Members on tab switch
+  useEffect(() => {
+    if (activeTab !== "members") return;
+
+    const fetchMembers = async () => {
+      setLoadingMembers(true);
+      try {
+        const res = await api.get(`/communities/${id}/members`);
+        setMembers(res.data.data || []);
+      } catch (err) {
+        console.error("Failed to fetch community members", err);
+      } finally {
+        setLoadingMembers(false);
+      }
+    };
+
+    fetchMembers();
+  }, [id, activeTab]);
+
   // Auto-scroll chat to bottom
   useEffect(() => {
     if (activeTab === "chat") {
@@ -104,16 +130,17 @@ export const GroupDetailPage = () => {
           is_member: true, 
           memberCount: parseInt(community.memberCount) + 1 
         });
+        toast.success("Joined community successfully!");
       }
     } catch (err) {
       console.error("Failed to join group", err);
-      alert(err.response?.data?.message || "Failed to join group");
+      toast.error(err.response?.data?.message || "Failed to join group");
     }
   };
 
   const handleLeaveGroup = async () => {
     if (community.creator_id === currentUserId) {
-      alert("As the creator of the community, you cannot leave it. You can delete it using the trash icon instead.");
+      toast.warning("As the creator of the community, you cannot leave it. You can delete it using the trash icon instead.");
       return;
     }
     if (!window.confirm(`Are you sure you want to leave ${community.name}?`)) return;
@@ -126,10 +153,11 @@ export const GroupDetailPage = () => {
           is_member: false, 
           memberCount: Math.max(0, parseInt(community.memberCount) - 1) 
         });
+        toast.info(`You left ${community.name}`);
       }
     } catch (err) {
       console.error("Failed to leave group", err);
-      alert(err.response?.data?.message || "Failed to leave group");
+      toast.error(err.response?.data?.message || "Failed to leave group");
     }
   };
 
@@ -138,11 +166,12 @@ export const GroupDetailPage = () => {
     try {
       const res = await api.delete(`/communities/${id}`);
       if (res.data.success) {
+        toast.success("Community deleted successfully");
         navigate('/groups');
       }
     } catch (err) {
       console.error("Failed to delete group", err);
-      alert(err.response?.data?.message || "Failed to delete group");
+      toast.error(err.response?.data?.message || "Failed to delete group");
     }
   };
 
@@ -156,7 +185,7 @@ export const GroupDetailPage = () => {
 
   const handleCreatePost = async (e) => {
     e.preventDefault();
-    if (!image) return alert("Please select an image");
+    if (!image) return toast.warning("Please select an image");
     
     setSubmitting(true);
     try {
@@ -174,9 +203,10 @@ export const GroupDetailPage = () => {
       setCaption("");
       setImage(null);
       setPreview("");
+      toast.success("Post published to group!");
     } catch (err) {
       console.error("Failed to create post", err);
-      alert(err.response?.data?.message || "Failed to create post");
+      toast.error(err.response?.data?.message || "Failed to create post");
     } finally {
       setSubmitting(false);
     }
@@ -224,7 +254,7 @@ export const GroupDetailPage = () => {
       setChatMessages((prev) => [...prev, res.data.data]);
     } catch (err) {
       console.error("Failed to send community chat message", err);
-      alert("Failed to send message. Make sure you are still a member of the group.");
+      toast.error("Failed to send message. Make sure you are still a member of the group.");
     } finally {
       setSendingChat(false);
     }
@@ -259,11 +289,11 @@ export const GroupDetailPage = () => {
         setCommunity(res.data.data);
         setShowEditModal(false);
         setEditLogoFile(null);
-        alert("Community updated successfully!");
+        toast.success("Community updated successfully!");
       }
     } catch (err) {
       console.error("Failed to edit community", err);
-      alert(err.response?.data?.message || "Failed to update community details");
+      toast.error(err.response?.data?.message || "Failed to update community details");
     } finally {
       setSavingCommunity(false);
     }
@@ -292,8 +322,6 @@ export const GroupDetailPage = () => {
       </div>
     );
   }
-
-  const currentUserId = user?.id || user?._id;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-6">
@@ -400,7 +428,7 @@ export const GroupDetailPage = () => {
         <button
           onClick={() => {
             if (!community.is_member) {
-              alert("You must join this community to open the Group Chat!");
+              toast.warning("You must join this community to open the Group Chat!");
               return;
             }
             setActiveTab("chat");
@@ -413,6 +441,17 @@ export const GroupDetailPage = () => {
         >
           <MessageSquare size={16} />
           Group Chat
+        </button>
+        <button
+          onClick={() => setActiveTab("members")}
+          className={`pb-4 px-2 font-bold text-sm flex items-center gap-2 transition-all bg-transparent border-none cursor-pointer ${
+            activeTab === "members"
+              ? "text-white border-b-2 border-purple-500"
+              : "text-zinc-500 hover:text-zinc-300"
+          }`}
+        >
+          <Users size={16} />
+          Members ({community.memberCount})
         </button>
       </div>
 
@@ -520,7 +559,7 @@ export const GroupDetailPage = () => {
             )}
           </div>
         </div>
-      ) : (
+      ) : activeTab === "chat" ? (
         /* Community Group Chat Workspace Tab */
         <div className="bg-zinc-950 border border-zinc-900 rounded-2xl overflow-hidden flex flex-col h-[550px] relative animate-fadeIn">
           {/* Messages Feed */}
@@ -608,6 +647,64 @@ export const GroupDetailPage = () => {
               )}
             </button>
           </form>
+        </div>
+      ) : (
+        /* Members Tab */
+        <div className="bg-zinc-950 border border-zinc-900 rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-lg font-bold text-white tracking-tight">Community Members</h2>
+            <span className="text-xs text-zinc-400 font-semibold">{members.length} members</span>
+          </div>
+
+          {loadingMembers ? (
+            <div className="flex justify-center items-center py-16">
+              <Loader2 size={24} className="animate-spin text-purple-500" />
+            </div>
+          ) : members.length === 0 ? (
+            <p className="text-xs text-zinc-500 text-center py-12">No members found.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {members.map((member) => {
+                const isCreator = member.id === community.creator_id;
+                return (
+                  <div 
+                    key={member.id}
+                    className="flex items-center justify-between p-3.5 rounded-xl bg-zinc-900/60 border border-zinc-850 hover:border-zinc-800 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-full overflow-hidden bg-zinc-800 border border-zinc-700 flex items-center justify-center font-bold text-xs text-white flex-shrink-0">
+                        {member.profile_pic ? (
+                          <img src={member.profile_pic} alt={member.username} className="w-full h-full object-cover" />
+                        ) : (
+                          member.username?.charAt(0).toUpperCase()
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-white truncate">{member.username}</span>
+                          {isCreator && (
+                            <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                              Creator
+                            </span>
+                          )}
+                        </div>
+                        {member.bio && (
+                          <p className="text-[11px] text-zinc-400 truncate max-w-xs m-0 mt-0.5">{member.bio}</p>
+                        )}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => navigate(`/profile/${member.username}`)}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold bg-zinc-800 hover:bg-zinc-700 text-white transition-colors cursor-pointer border-none flex-shrink-0"
+                    >
+                      View
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 

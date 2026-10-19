@@ -351,3 +351,24 @@ export const sendCommunityMessage = async (req, res) => {
     res.status(500).json({ success: false, message: 'Server Error', error: error.message });
   }
 };
+
+// @desc    Get members of a community
+// @route   GET /api/communities/:id/members
+// @access  Protected
+export const getCommunityMembers = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const [members] = await pool.query(
+      `SELECT u.id, u.username, u.profile_pic, u.bio, cm.id as membership_id
+       FROM community_members cm
+       JOIN users u ON cm.user_id = u.id
+       WHERE cm.community_id = ?
+       ORDER BY u.username ASC`,
+      [id]
+    );
+    res.json({ success: true, data: members });
+  } catch (error) {
+    console.error('getCommunityMembers ERROR:', error.message);
+    res.status(500).json({ success: false, message: 'Server Error', error: error.message });
+  }
+};

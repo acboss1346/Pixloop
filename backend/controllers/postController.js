@@ -92,6 +92,14 @@ export const getPosts = async (req, res) => {
 
     query += ` ORDER BY p.created_at DESC`;
 
+    const page = req.query.page ? parseInt(req.query.page) : null;
+    const limit = req.query.limit ? parseInt(req.query.limit) : null;
+    if (page && limit) {
+      const offset = (page - 1) * limit;
+      query += ` LIMIT ? OFFSET ?`;
+      queryParams.push(limit, offset);
+    }
+
     const [posts] = await pool.query(query, queryParams);
     // Convert is_liked and is_saved from 0/1 to boolean
     const formattedPosts = posts.map(post => ({
